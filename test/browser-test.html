@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>解方程计算器 · 自检（浏览器版）</title>
+<style>
+body{background:#0d1117;color:#e8eef7;font-family:"Segoe UI","Microsoft YaHei",sans-serif;padding:24px;line-height:1.6}
+h1{font-size:20px;margin:0 0 4px}
+p.sub{color:#93a2b8;font-size:14px;margin:0 0 18px}
+.sum{font-size:17px;font-weight:600;margin-bottom:14px}
+.ok{color:#35d39a}.bad{color:#ff6b6b}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{border:1px solid rgba(255,255,255,.1);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:rgba(255,255,255,.05)}
+td.q{font-family:Consolas,monospace;white-space:nowrap}
+td.mono{font-family:Consolas,monospace;color:#bcd4f0;font-size:12.5px}
+tr.fail{background:rgba(255,107,107,.12)}
+tr.pass td:last-child{color:#6f7f96}
+</style>
+</head>
+<body>
+<h1>解方程计算器 · 自检</h1>
+<p class="sub">在浏览器里跑同一套 73 个用例，确认本机环境下的计算结果与命令行一致。</p>
+<div class="sum" id="sum">正在运行…</div>
+<div id="tableWrap"></div>
+
+<script src="../src/00-frac.js"></script>
+<script src="../src/10-poly.js"></script>
+<script src="../src/20-parser.js"></script>
+<script src="../src/30-quadratic.js"></script>
+<script src="../src/40-solve-core.js"></script>
+<script src="../src/90-entry.js"></script>
+<script src="cases.js"></script>
+<script src="harness.js"></script>
+<script>
+(function () {
+  var NS = window.__EqSolver;
+  var S = { solve: NS.solve, version: NS.version };
+  var result = window.EQ_HARNESS.runCases(S, window.EQ_TEST_CASES);
+
+  var sum = document.getElementById('sum');
+  sum.className = 'sum ' + (result.failed ? 'bad' : 'ok');
+  sum.textContent = '求解器 v' + S.version + ' ｜ 用例 ' + result.total +
+    ' ｜ 通过 ' + result.passed + ' ｜ 失败 ' + result.failed + (result.failed ? '' : ' ✓');
+
+  var wrap = document.getElementById('tableWrap');
+  var table = document.createElement('table');
+  var head = document.createElement('tr');
+  ['#', '方程', '结果', '解集 / 提示'].forEach(function (t) {
+    var th = document.createElement('th'); th.textContent = t; head.appendChild(th);
+  });
+  table.appendChild(head);
+
+  result.details.forEach(function (d) {
+    var tr = document.createElement('tr');
+    tr.className = d.problems.length ? 'fail' : 'pass';
+    var td1 = document.createElement('td'); td1.textContent = d.index + 1;
+    var td2 = document.createElement('td'); td2.className = 'q'; td2.textContent = d.q;
+    var td3 = document.createElement('td'); td3.textContent = d.problems.length ? '✗ 失败' : '✓ 通过';
+    var td4 = document.createElement('td'); td4.className = 'mono';
+    if (d.problems.length) td4.textContent = d.problems.join('；');
+    else if (d.res && d.res.ok) td4.textContent = d.res.solutionText;
+    else td4.textContent = (d.res && d.res.error) || '';
+    [td1, td2, td3, td4].forEach(function (td) { tr.appendChild(td); });
+    table.appendChild(tr);
+  });
+  wrap.appendChild(table);
+})();
+</script>
+</body>
+</html>

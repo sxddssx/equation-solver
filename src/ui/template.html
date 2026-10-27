@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: MIT -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>解方程计算器 · 一元一次 / 一元二次</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#141a24; --card:rgba(22,29,41,.82); --line:rgba(255,255,255,.09);
+  --txt:#e8eef7; --dim:#93a2b8; --acc:#4f9dff; --acc2:#7c5cff; --ok:#35d39a; --warn:#ffb020; --err:#ff6b6b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1100px 600px at 12% -8%, rgba(79,157,255,.20), transparent 60%),
+    radial-gradient(900px 500px at 92% 4%, rgba(124,92,255,.18), transparent 62%),
+    var(--bg);
+  color:var(--txt); min-height:100vh;
+  font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,-apple-system,sans-serif;
+  font-size:16px; line-height:1.62; padding:28px 16px 60px;
+}
+.app{max-width:960px;margin:0 auto}
+.hero h1{
+  margin:0 0 6px; font-size:clamp(26px,4.2vw,38px); letter-spacing:.5px;
+  background:linear-gradient(92deg,#8fc4ff,#c3b2ff 60%,#7ef0d0);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.hero .sub{margin:0 0 22px;color:var(--dim);font-size:14.5px}
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:18px 18px 16px; margin-bottom:16px; backdrop-filter:blur(8px);
+  box-shadow:0 12px 34px rgba(0,0,0,.28);
+}
+.lbl{display:block;font-size:13px;color:var(--dim);margin-bottom:8px;letter-spacing:.6px}
+.input-row{display:flex;gap:10px;flex-wrap:wrap}
+#eq{
+  flex:1 1 320px; min-width:0; padding:15px 16px; font-size:19px; color:var(--txt);
+  background:#0b1220; border:1px solid rgba(255,255,255,.14); border-radius:12px;
+  font-family:"Cascadia Mono",Consolas,"Courier New",monospace; outline:none; transition:.18s;
+}
+#eq:focus{border-color:var(--acc);box-shadow:0 0 0 4px rgba(79,157,255,.16)}
+#eq::placeholder{color:#5a6a80}
+.btn{
+  padding:14px 22px; font-size:16px; font-weight:600; color:#fff; cursor:pointer;
+  border:1px solid rgba(255,255,255,.14); border-radius:12px; background:#1d2637; transition:.18s;
+}
+.btn:hover{transform:translateY(-1px);background:#243044}
+.btn.primary{background:linear-gradient(96deg,var(--acc),var(--acc2));border-color:transparent}
+.btn.primary:hover{box-shadow:0 8px 22px rgba(79,157,255,.32)}
+.hint{margin:10px 2px 0;color:var(--dim);font-size:13px}
+.hint code,.mono{font-family:"Cascadia Mono",Consolas,monospace;color:#bcd4f0;background:rgba(255,255,255,.06);padding:1px 6px;border-radius:6px}
+kbd{font-family:inherit;font-size:12px;background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.sol-card{border-color:rgba(53,211,154,.32);background:linear-gradient(180deg,rgba(53,211,154,.10),rgba(22,29,41,.85))}
+.sol-card.warn{border-color:rgba(255,176,32,.34);background:linear-gradient(180deg,rgba(255,176,32,.10),rgba(22,29,41,.85))}
+.sol-title{font-size:13px;color:var(--dim);letter-spacing:1px;margin:0 0 8px}
+.sol-big{font-size:clamp(20px,3.4vw,27px);font-weight:600;line-height:1.5;word-break:break-word;font-family:"Cascadia Mono",Consolas,monospace}
+.sol-big .ln{display:block}
+.sol-sub{margin-top:6px;color:var(--dim);font-size:13.5px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.meta-chip{font-size:12.5px;color:#cbd8ea;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.meta-chip b{color:#fff;font-weight:600}
+.err-card{border-color:rgba(255,107,107,.4);background:linear-gradient(180deg,rgba(255,107,107,.12),rgba(22,29,41,.85))}
+.err-card .big{font-size:17px;font-weight:600;color:#ffd7d7;margin:0 0 6px}
+.err-card ul{margin:6px 0 0;padding-left:20px;color:var(--dim);font-size:13.5px}
+.step{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025);margin-bottom:10px}
+.step .st{font-size:14.5px;font-weight:600;color:#a9c8f0;margin:0 0 6px}
+.step .line{font-family:"Cascadia Mono",Consolas,monospace;font-size:14.5px;color:#e2ebf7;padding:2px 0;word-break:break-word}
+.plot-wrap{position:relative}
+canvas{width:100%;height:260px;display:block;border-radius:12px;background:#0b1220;border:1px solid var(--line)}
+.plot-note{color:var(--dim);font-size:13px;margin:8px 2px 0}
+/* 折叠区块（函数图像 / 解题步骤 / 历史记录） */
+.fold{
+  background:var(--card); border:1px solid var(--line); border-radius:16px; margin-bottom:16px;
+  backdrop-filter:blur(8px); box-shadow:0 12px 34px rgba(0,0,0,.28); overflow:hidden;
+}
+.fold>summary{
+  list-style:none; cursor:pointer; user-select:none; padding:15px 18px;
+  display:flex; align-items:center; gap:10px; font-size:15px; letter-spacing:.8px; color:#dbe6f5;
+  transition:background .16s;
+}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::marker{content:''}
+.fold>summary:hover{background:rgba(255,255,255,.045)}
+.fold>summary::after{
+  content:''; flex:0 0 auto; width:8px; height:8px; margin-left:10px;
+  border-right:2px solid #8fa3bd; border-bottom:2px solid #8fa3bd;
+  transform:rotate(-45deg); transition:transform .2s;
+}
+.fold[open]>summary::after{transform:rotate(45deg)}
+.fold-meta{margin-left:auto;font-size:12.5px;color:var(--dim);white-space:nowrap}
+.fold-body{padding:0 18px 18px}
+.chip{
+  font-family:"Cascadia Mono",Consolas,monospace; font-size:13.5px; color:#cfe0f5; cursor:pointer;
+  background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; padding:6px 13px; transition:.16s;
+}
+.chip:hover{background:rgba(79,157,255,.18);border-color:rgba(79,157,255,.5);color:#fff}
+.history{display:flex;flex-wrap:wrap;gap:8px}
+.foot{color:#6f7f96;font-size:12.5px;text-align:center;margin-top:22px}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+  background:#1d283a;color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 18px;
+  opacity:0;transition:.25s;pointer-events:none;font-size:14px;z-index:9;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:600px){
+  body{padding:18px 10px 50px}
+  .btn{padding:13px 16px}
+  #eq{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <h1>解方程计算器</h1>
+    <p class="sub">一元一次方程 · 一元二次方程 &nbsp;|&nbsp; 自动移项、合并同类项、判别式、分步讲解、代入验算</p>
+  </header>
+
+  <section class="card">
+    <label class="lbl" for="eq">输入方程（等号两边都可以有未知数）</label>
+    <div class="input-row">
+      <input id="eq" type="text" autocomplete="off" spellcheck="false" placeholder="例如：2x + 3 = 5x - 9   或   x² - 5x + 6 = 0">
+      <button id="solveBtn" class="btn primary" type="button">求解</button>
+      <button id="copyBtn" class="btn" type="button">复制解答</button>
+    </div>
+    <p class="hint">
+      支持：<code>x^2</code> 或 <code>x²</code>、括号、小数、分数 <code>1/2</code>、<code>2x</code> 这类省略乘号写法；
+      按 <kbd>Enter</kbd> 直接求解。求解全部用精确有理数与根式完成。
+    </p>
+  </section>
+
+  <div id="result"></div>
+
+  <details class="fold" id="historyCard" hidden>
+    <summary>历史记录<span class="fold-meta" id="historyMeta"></span></summary>
+    <div class="fold-body">
+      <div class="history" id="history"></div>
+    </div>
+  </details>
+
+  <footer class="foot">一元一次 / 一元二次方程自动求解器 · 结果含精确解与小数近似，可复制粘贴</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- DEV-SCRIPTS-START -->
+<script src="src/00-frac.js"></script>
+<script src="src/10-poly.js"></script>
+<script src="src/20-parser.js"></script>
+<script src="src/30-quadratic.js"></script>
+<script src="src/40-solve-core.js"></script>
+<script src="src/90-entry.js"></script>
+<script src="src/ui/app-plot.js"></script>
+<script src="src/ui/app-core.js"></script>
+<script src="src/ui/app-boot.js"></script>
+<!-- DEV-SCRIPTS-END -->
+</body>
+</html>

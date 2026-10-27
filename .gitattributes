@@ -1,0 +1,10 @@
+# 统一换行：仓库内一律 LF，检出时也不做 CRLF 转换。
+# 否则 Windows 上的 core.autocrlf 会让 shell/ 里的 .ps1 与其余文件出现
+# “全部被修改”的假差异，也让跨平台协作的 diff 变得不可读。
+* text=auto eol=lf
+
+# 单文件成品与测试页由 build.js 生成，按文本处理即可（不要当二进制）。
+*.html text eol=lf
+*.js   text eol=lf
+*.md   text eol=lf
+*.ps1  text eol=lf

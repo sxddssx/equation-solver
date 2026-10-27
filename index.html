@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<!--
+  解方程计算器（一元一次 / 一元二次）—— 单文件离线版
+  由 build.js 自动生成，请勿直接修改本文件；改源码后重新运行 node build.js
+-->
+<!-- SPDX-License-Identifier: MIT -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>解方程计算器 · 一元一次 / 一元二次</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#141a24; --card:rgba(22,29,41,.82); --line:rgba(255,255,255,.09);
+  --txt:#e8eef7; --dim:#93a2b8; --acc:#4f9dff; --acc2:#7c5cff; --ok:#35d39a; --warn:#ffb020; --err:#ff6b6b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1100px 600px at 12% -8%, rgba(79,157,255,.20), transparent 60%),
+    radial-gradient(900px 500px at 92% 4%, rgba(124,92,255,.18), transparent 62%),
+    var(--bg);
+  color:var(--txt); min-height:100vh;
+  font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,-apple-system,sans-serif;
+  font-size:16px; line-height:1.62; padding:28px 16px 60px;
+}
+.app{max-width:960px;margin:0 auto}
+.hero h1{
+  margin:0 0 6px; font-size:clamp(26px,4.2vw,38px); letter-spacing:.5px;
+  background:linear-gradient(92deg,#8fc4ff,#c3b2ff 60%,#7ef0d0);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.hero .sub{margin:0 0 22px;color:var(--dim);font-size:14.5px}
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:18px 18px 16px; margin-bottom:16px; backdrop-filter:blur(8px);
+  box-shadow:0 12px 34px rgba(0,0,0,.28);
+}
+.lbl{display:block;font-size:13px;color:var(--dim);margin-bottom:8px;letter-spacing:.6px}
+.input-row{display:flex;gap:10px;flex-wrap:wrap}
+#eq{
+  flex:1 1 320px; min-width:0; padding:15px 16px; font-size:19px; color:var(--txt);
+  background:#0b1220; border:1px solid rgba(255,255,255,.14); border-radius:12px;
+  font-family:"Cascadia Mono",Consolas,"Courier New",monospace; outline:none; transition:.18s;
+}
+#eq:focus{border-color:var(--acc);box-shadow:0 0 0 4px rgba(79,157,255,.16)}
+#eq::placeholder{color:#5a6a80}
+.btn{
+  padding:14px 22px; font-size:16px; font-weight:600; color:#fff; cursor:pointer;
+  border:1px solid rgba(255,255,255,.14); border-radius:12px; background:#1d2637; transition:.18s;
+}
+.btn:hover{transform:translateY(-1px);background:#243044}
+.btn.primary{background:linear-gradient(96deg,var(--acc),var(--acc2));border-color:transparent}
+.btn.primary:hover{box-shadow:0 8px 22px rgba(79,157,255,.32)}
+.hint{margin:10px 2px 0;color:var(--dim);font-size:13px}
+.hint code,.mono{font-family:"Cascadia Mono",Consolas,monospace;color:#bcd4f0;background:rgba(255,255,255,.06);padding:1px 6px;border-radius:6px}
+kbd{font-family:inherit;font-size:12px;background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.sol-card{border-color:rgba(53,211,154,.32);background:linear-gradient(180deg,rgba(53,211,154,.10),rgba(22,29,41,.85))}
+.sol-card.warn{border-color:rgba(255,176,32,.34);background:linear-gradient(180deg,rgba(255,176,32,.10),rgba(22,29,41,.85))}
+.sol-title{font-size:13px;color:var(--dim);letter-spacing:1px;margin:0 0 8px}
+.sol-big{font-size:clamp(20px,3.4vw,27px);font-weight:600;line-height:1.5;word-break:break-word;font-family:"Cascadia Mono",Consolas,monospace}
+.sol-big .ln{display:block}
+.sol-sub{margin-top:6px;color:var(--dim);font-size:13.5px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.meta-chip{font-size:12.5px;color:#cbd8ea;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.meta-chip b{color:#fff;font-weight:600}
+.err-card{border-color:rgba(255,107,107,.4);background:linear-gradient(180deg,rgba(255,107,107,.12),rgba(22,29,41,.85))}
+.err-card .big{font-size:17px;font-weight:600;color:#ffd7d7;margin:0 0 6px}
+.err-card ul{margin:6px 0 0;padding-left:20px;color:var(--dim);font-size:13.5px}
+.step{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025);margin-bottom:10px}
+.step .st{font-size:14.5px;font-weight:600;color:#a9c8f0;margin:0 0 6px}
+.step .line{font-family:"Cascadia Mono",Consolas,monospace;font-size:14.5px;color:#e2ebf7;padding:2px 0;word-break:break-word}
+.plot-wrap{position:relative}
+canvas{width:100%;height:260px;display:block;border-radius:12px;background:#0b1220;border:1px solid var(--line)}
+.plot-note{color:var(--dim);font-size:13px;margin:8px 2px 0}
+/* 折叠区块（函数图像 / 解题步骤 / 历史记录） */
+.fold{
+  background:var(--card); border:1px solid var(--line); border-radius:16px; margin-bottom:16px;
+  backdrop-filter:blur(8px); box-shadow:0 12px 34px rgba(0,0,0,.28); overflow:hidden;
+}
+.fold>summary{
+  list-style:none; cursor:pointer; user-select:none; padding:15px 18px;
+  display:flex; align-items:center; gap:10px; font-size:15px; letter-spacing:.8px; color:#dbe6f5;
+  transition:background .16s;
+}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::marker{content:''}
+.fold>summary:hover{background:rgba(255,255,255,.045)}
+.fold>summary::after{
+  content:''; flex:0 0 auto; width:8px; height:8px; margin-left:10px;
+  border-right:2px solid #8fa3bd; border-bottom:2px solid #8fa3bd;
+  transform:rotate(-45deg); transition:transform .2s;
+}
+.fold[open]>summary::after{transform:rotate(45deg)}
+.fold-meta{margin-left:auto;font-size:12.5px;color:var(--dim);white-space:nowrap}
+.fold-body{padding:0 18px 18px}
+.chip{
+  font-family:"Cascadia Mono",Consolas,monospace; font-size:13.5px; color:#cfe0f5; cursor:pointer;
+  background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; padding:6px 13px; transition:.16s;
+}
+.chip:hover{background:rgba(79,157,255,.18);border-color:rgba(79,157,255,.5);color:#fff}
+.history{display:flex;flex-wrap:wrap;gap:8px}
+.foot{color:#6f7f96;font-size:12.5px;text-align:center;margin-top:22px}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+  background:#1d283a;color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 18px;
+  opacity:0;transition:.25s;pointer-events:none;font-size:14px;z-index:9;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:600px){
+  body{padding:18px 10px 50px}
+  .btn{padding:13px 16px}
+  #eq{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <h1>解方程计算器</h1>
+    <p class="sub">一元一次方程 · 一元二次方程 &nbsp;|&nbsp; 自动移项、合并同类项、判别式、分步讲解、代入验算</p>
+  </header>
+
+  <section class="card">
+    <label class="lbl" for="eq">输入方程（等号两边都可以有未知数）</label>
+    <div class="input-row">
+      <input id="eq" type="text" autocomplete="off" spellcheck="false" placeholder="例如：2x + 3 = 5x - 9   或   x² - 5x + 6 = 0">
+      <button id="solveBtn" class="btn primary" type="button">求解</button>
+      <button id="copyBtn" class="btn" type="button">复制解答</button>
+    </div>
+    <p class="hint">
+      支持：<code>x^2</code> 或 <code>x²</code>、括号、小数、分数 <code>1/2</code>、<code>2x</code> 这类省略乘号写法；
+      按 <kbd>Enter</kbd> 直接求解。求解全部用精确有理数与根式完成。
+    </p>
+  </section>
+
+  <div id="result"></div>
+
+  <details class="fold" id="historyCard" hidden>
+    <summary>历史记录<span class="fold-meta" id="historyMeta"></span></summary>
+    <div class="fold-body">
+      <div class="history" id="history"></div>
+    </div>
+  </details>
+
+  <footer class="foot">一元一次 / 一元二次方程自动求解器 · 结果含精确解与小数近似，可复制粘贴</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- 全部脚本已内联，双击即可离线运行 -->
+<script>
+/* ===================== src/00-frac.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 一元一次/一元二次方程求解器 —— 模块 1/6：有理数与工具
+ * 纯逻辑，无 DOM 依赖。所有模块挂在全局命名空间 __EqSolver 上，
+ * 既能被浏览器（多个 <script> 或打包成一个文件）使用，也能被 Node require。
+ */
+(function (NS) {
+  'use strict';
+
+  /** 求解器可预期的错误（会作为友好提示返回给用户） */
+  class EquationError extends Error {
+    constructor(message) {
+      super(message);
+      this.name = 'EquationError';
+    }
+  }
+
+  /* ---------------- BigInt 工具 ---------------- */
+  function absBig(a) { return a < 0n ? -a : a; }
+
+  function gcdBig(a, b) {
+    a = absBig(a); b = absBig(b);
+    while (b) { const t = a % b; a = b; b = t; }
+    return a;
+  }
+
+  function lcmBig(a, b) {
+    if (a === 0n || b === 0n) return 0n;
+    return absBig((a / gcdBig(a, b)) * b);
+  }
+
+  /** 整数平方根（牛顿迭代，只用 BigInt，不怕溢出） */
+  function isqrtBig(n) {
+    if (n < 0n) throw new EquationError('负数不能开平方');
+    if (n < 2n) return n;
+    const bits = n.toString(2).length;
+    let x = 1n << BigInt(Math.ceil(bits / 2));   // 保证 x >= sqrt(n)
+    for (;;) {
+      const nx = (x + n / x) >> 1n;
+      if (nx >= x) break;
+      x = nx;
+    }
+    return x;
+  }
+
+  function isPerfectSquareBig(n) {
+    if (n < 0n) return false;
+    const r = isqrtBig(n);
+    return r * r === n;
+  }
+
+  /* ---------------- 有理数 Frac ---------------- */
+  /** 精确有理数：分子分母都是 BigInt，自动约分，分母恒为正 */
+  function Frac(n, d) {
+    if (n instanceof Frac) { this.n = n.n; this.d = n.d; return; }
+    if (typeof n === 'string') { const p = Frac.parse(n); this.n = p.n; this.d = p.d; return; }
+    n = BigInt(n === undefined || n === null ? 0 : n);
+    d = BigInt(d === undefined || d === null ? 1 : d);
+    if (d === 0n) throw new EquationError('分母不能为 0');
+    if (d < 0n) { n = -n; d = -d; }
+    const g = gcdBig(n, d) || 1n;
+    this.n = n / g;
+    this.d = d / g;
+  }
+
+  Frac.prototype.isZero = function () { return this.n === 0n; };
+  Frac.prototype.isOne = function () { return this.n === 1n && this.d === 1n; };
+  Frac.prototype.isNegOne = function () { return this.n === -1n && this.d === 1n; };
+  Frac.prototype.isInt = function () { return this.d === 1n; };
+  Frac.prototype.sign = function () { return this.n < 0n ? -1 : (this.n > 0n ? 1 : 0); };
+  Frac.prototype.add = function (o) { o = new Frac(o); return new Frac(this.n * o.d + o.n * this.d, this.d * o.d); };
+  Frac.prototype.sub = function (o) { o = new Frac(o); return new Frac(this.n * o.d - o.n * this.d, this.d * o.d); };
+  Frac.prototype.mul = function (o) { o = new Frac(o); return new Frac(this.n * o.n, this.d * o.d); };
+  Frac.prototype.div = function (o) {
+    o = new Frac(o);
+    if (o.isZero()) throw new EquationError('除数不能为 0');
+    return new Frac(this.n * o.d, this.d * o.n);
+  };
+  Frac.prototype.neg = function () { return new Frac(-this.n, this.d); };
+  Frac.prototype.abs = function () { return new Frac(absBig(this.n), this.d); };
+  Frac.prototype.inv = function () {
+    if (this.isZero()) throw new EquationError('分母不能为 0');
+    return new Frac(this.d, this.n);
+  };
+  Frac.prototype.cmp = function (o) {
+    o = new Frac(o);
+    const l = this.n * o.d, r = o.n * this.d;
+    return l < r ? -1 : (l > r ? 1 : 0);
+  };
+  Frac.prototype.eq = function (o) { return this.cmp(o) === 0; };
+  Frac.prototype.toNumber = function () { return Number(this.n) / Number(this.d); };
+  Frac.prototype.toString = function () { return this.d === 1n ? this.n.toString() : this.n + '/' + this.d; };
+  Frac.prototype.valueOf = function () { return this.toNumber(); };
+
+  /** 解析十进制字符串："3"、"-2.5"、".5"（也可接受分子/分母形式 "3/4"） */
+  Frac.parse = function (s) {
+    s = String(s).trim();
+    const slash = /^([+-]?\d+)\/(\d+)$/.exec(s);
+    if (slash) return new Frac(BigInt(slash[1]), BigInt(slash[2]));
+    const m = /^([+-]?)(\d*)(?:\.(\d*))?$/.exec(s);
+    if (!m || (!m[2] && !m[3])) throw new EquationError('无法识别的数字：' + s);
+    const sign = m[1] === '-' ? -1n : 1n;
+    const intPart = m[2] || '0';
+    const fracPart = m[3] || '';
+    const n = BigInt(intPart + fracPart) * sign;
+    const d = fracPart ? 10n ** BigInt(fracPart.length) : 1n;
+    return new Frac(n, d);
+  };
+
+  NS.EquationError = EquationError;
+  NS.Frac = Frac;
+  NS.util = {
+    absBig: absBig, gcdBig: gcdBig, lcmBig: lcmBig,
+    isqrtBig: isqrtBig, isPerfectSquareBig: isPerfectSquareBig
+  };
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+/* ===================== src/10-poly.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 模块 2/6：多项式运算与显示格式化 */
+(function (NS) {
+  'use strict';
+  const Frac = NS.Frac;
+  const Error_ = NS.EquationError;
+  const ZERO = new Frac(0n);
+  const ONE = new Frac(1n);
+
+  /* 多项式用「系数数组」表示：p[k] 是 x^k 的系数（Frac），下标即次数 */
+  function pTrim(p) {
+    let i = p.length - 1;
+    while (i > 0 && p[i].isZero()) i--;
+    return p.slice(0, i + 1);
+  }
+
+  function pIsZero(p) { return pTrim(p).length === 1 && pTrim(p)[0].isZero(); }
+
+  function pAdd(a, b) {
+    const n = Math.max(a.length, b.length), out = [];
+    for (let i = 0; i < n; i++) out.push((a[i] || ZERO).add(b[i] || ZERO));
+    return pTrim(out);
+  }
+
+  function pNeg(a) { return pTrim(a.map(c => c.neg())); }
+
+  function pSub(a, b) { return pAdd(a, pNeg(b)); }
+
+  function pMul(a, b) {
+    if (a.length === 1 && a[0].isZero()) return [ZERO];
+    if (b.length === 1 && b[0].isZero()) return [ZERO];
+    const out = new Array(a.length + b.length - 1);
+    for (let i = 0; i < out.length; i++) out[i] = ZERO;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i].isZero()) continue;
+      for (let j = 0; j < b.length; j++) {
+        if (b[j].isZero()) continue;
+        out[i + j] = out[i + j].add(a[i].mul(b[j]));
+      }
+    }
+    return pTrim(out);
+  }
+
+  function pScale(a, f) { f = new Frac(f); return pTrim(a.map(c => c.mul(f))); }
+
+  /** 除以常数（除数含未知数时报错：本工具只支持整式方程） */
+  function pDiv(a, b) {
+    b = pTrim(b);
+    if (b.length > 1) throw new Error_('未知数不能出现在分母里，请先把分母化为常数（本工具只支持整式方程）');
+    if (b[0].isZero()) throw new Error_('除数不能为 0');
+    return pScale(a, b[0].inv());
+  }
+
+  function pPow(base, k) {
+    base = pTrim(base);
+    if (k === 0n) return [ONE];
+    if (k === 1n) return base;
+    if (BigInt(base.length - 1) * k > 20n) throw new Error_('化简后的次数过高（超过 20 次），无法处理');
+    let out = [ONE];
+    for (let i = 0n; i < k; i++) out = pMul(out, base);
+    return pTrim(out);
+  }
+
+  /** 指数必须是 0~20 的整数常数 */
+  function pToConstantInt(p) {
+    p = pTrim(p);
+    if (p.length > 1) throw new Error_('指数必须是常数（不能含未知数）');
+    const f = p[0];
+    if (f.d !== 1n) throw new Error_('指数必须是整数');
+    if (f.n < 0n) throw new Error_('暂不支持负指数（如 x^-1）');
+    if (f.n > 20n) throw new Error_('指数太大（最大支持 20 次）');
+    return f.n;
+  }
+
+  /* ---------------- 数字 / 表达式的显示 ---------------- */
+
+  /** 分数的基本信息：是否整数、是否只有 2 和 5 的因子（可写成有限小数） */
+  function decInfo(f) {
+    let d = f.d, k2 = 0, k5 = 0;
+    while (d % 2n === 0n) { d /= 2n; k2++; }
+    while (d % 5n === 0n) { d /= 5n; k5++; }
+    if (d !== 1n) return null;
+    const e = Math.max(k2, k5);
+    if (e > 40) return null;
+    return { e: e };
+  }
+
+  /** 精确的十进制字符串（仅当分母只含因子 2、5），否则返回 null */
+  function exactDecimal(f) {
+    if (f.d === 1n) return f.n.toString();
+    const info = decInfo(f);
+    if (!info) return null;
+    const scaled = f.n * (10n ** BigInt(info.e)) / f.d;    // 恰好整除
+    const neg = scaled < 0n;
+    let s = (neg ? -scaled : scaled).toString();
+    const e = info.e;
+    if (e > 0) {
+      while (s.length <= e) s = '0' + s;
+      s = s.slice(0, s.length - e) + '.' + s.slice(s.length - e);
+      s = s.replace(/0+$/, '').replace(/\.$/, '');
+    }
+    return (neg ? '-' : '') + s;
+  }
+
+  function numToStr(x, digits) {
+    if (!isFinite(x)) return String(x);
+    digits = digits || 6;
+    if (Math.abs(x) < 1e-12) return '0';
+    const abs = Math.abs(x);
+    if (abs >= 1e6 || abs < 1e-4) return x.toExponential(4).replace(/e([+-])(\d+)/, 'e$1$2');
+    let s = x.toFixed(digits);
+    s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+    return s;
+  }
+
+  /** 分数显示：整数直接显示；分数显示 "n/d" */
+  function fmtFrac(f) {
+    f = new Frac(f);
+    if (f.d === 1n) return f.n.toString();
+    return f.n + '/' + f.d;
+  }
+
+  /** 分数显示（带小数对照），用于「解」这一类需要直观的地方 */
+  function fmtFracBoth(f) {
+    f = new Frac(f);
+    if (f.d === 1n) return f.n.toString();
+    const dec = exactDecimal(f);
+    return dec !== null ? (f.n + '/' + f.d + ' = ' + dec) : (f.n + '/' + f.d + ' ≈ ' + numToStr(f.toNumber(), 8));
+  }
+
+  /** 作为系数参与乘法时加括号：(2/3)x */
+  function fmtCoef(f) { f = new Frac(f); return f.d === 1n ? f.n.toString() : '(' + f.n + '/' + f.d + ')'; }
+
+  /** 系数 + 未知数：-x、3x、(-2/3)x、x */
+  function coefVar(f, v) {
+    f = new Frac(f);
+    if (f.isOne()) return v;
+    if (f.isNegOne()) return '-' + v;
+    return fmtCoef(f) + v;
+  }
+
+  /** 多项式转文字（按次数从高到低），如 2x² - 8x + 6 */
+  function polyToText(p, v) {
+    p = pTrim(p);
+    if (p.length === 1 && p[0].isZero()) return '0';
+    const parts = [];
+    for (let k = p.length - 1; k >= 0; k--) {
+      const c = p[k];
+      if (c.isZero()) continue;
+      const neg = c.n < 0n;
+      const a = c.abs();
+      let coefStr = '', varStr = '';
+      if (k === 0) {
+        coefStr = fmtFrac(a);
+      } else if (k === 1) {
+        varStr = v;
+        coefStr = a.isOne() ? '' : fmtCoef(a);
+      } else {
+        varStr = v + (k === 2 ? '²' : (k === 3 ? '³' : '^' + k));
+        coefStr = a.isOne() ? '' : fmtCoef(a);
+      }
+      const body = coefStr + varStr;
+      if (parts.length === 0) parts.push((neg ? '-' : '') + body);
+      else parts.push((neg ? ' - ' : ' + ') + body);
+    }
+    return parts.length ? parts.join('') : '0';
+  }
+
+  NS.poly = {
+    ZERO: ZERO, ONE: ONE, pTrim: pTrim, pIsZero: pIsZero, pAdd: pAdd, pNeg: pNeg,
+    pSub: pSub, pMul: pMul, pScale: pScale, pDiv: pDiv, pPow: pPow, pToConstantInt: pToConstantInt
+  };
+  NS.fmt = {
+    fmtFrac: fmtFrac, fmtFracBoth: fmtFracBoth, fmtCoef: fmtCoef, coefVar: coefVar,
+    polyToText: polyToText, numToStr: numToStr, exactDecimal: exactDecimal
+  };
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+/* ===================== src/20-parser.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 模块 3/6：输入规范化 + 分词 + 递归下降解析（把方程两边都变成多项式） */
+(function (NS) {
+  'use strict';
+  const Frac = NS.Frac;
+  const Error_ = NS.EquationError;
+  const P = NS.poly;
+
+  const SUP = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
+  const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫'];
+
+  /** 把用户输入统一成便于解析的形式（全角、上标、乘号等） */
+  function normalizeInput(s) {
+    let t = String(s == null ? '' : s);
+    t = t.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, m => '^' + m.split('').map(c => SUP[c]).join(''));
+    t = t.replace(/[⁺]/g, '+').replace(/[⁻]/g, '-');
+    t = t.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    t = t.replace(/[×✕✖·⋅∙]/g, '*').replace(/[＊]/g, '*');
+    t = t.replace(/[÷／]/g, '/');
+    t = t.replace(/[−–—－ー]/g, '-').replace(/[＋]/g, '+');
+    t = t.replace(/[＾ˆ]/g, '^');
+    t = t.replace(/[＝]/g, '=');
+    t = t.replace(/[（]/g, '(').replace(/[）]/g, ')');
+    t = t.replace(/[．]/g, '.');
+    t = t.replace(/[［【]/g, '(').replace(/[］】]/g, ')');
+    t = t.replace(/\s+/g, '');
+    return t;
+  }
+
+  function tokenize(src) {
+    const tokens = [];
+    let i = 0;
+    while (i < src.length) {
+      const c = src[i];
+      if (/[0-9.]/.test(c)) {
+        let j = i, dot = 0;
+        while (j < src.length && (/[0-9]/.test(src[j]) || src[j] === '.')) {
+          if (src[j] === '.') dot++;
+          j++;
+        }
+        if (dot > 1) throw new Error_('小数点太多：' + src.slice(i, j));
+        tokens.push({ t: 'num', v: Frac.parse(src.slice(i, j)) });
+        i = j;
+        continue;
+      }
+      if (/[A-Za-z]/.test(c)) { tokens.push({ t: 'id', v: c }); i++; continue; }
+      if (c === '+' || c === '-' || c === '*' || c === '/' || c === '^') { tokens.push({ t: 'op', v: c }); i++; continue; }
+      if (c === '(') { tokens.push({ t: 'lp' }); i++; continue; }
+      if (c === ')') { tokens.push({ t: 'rp' }); i++; continue; }
+      if (c === '=') { tokens.push({ t: 'eq' }); i++; continue; }
+      if (/[\u4e00-\u9fa5]/.test(c)) {
+        throw new Error_('请用字母表示未知数（例如 x），不要使用「' + c + '」');
+      }
+      throw new Error_('无法识别的符号：' + c);
+    }
+    return tokens;
+  }
+
+  function Parser(tokens) {
+    this.tk = tokens;
+    this.pos = 0;
+    this.variable = null;
+  }
+
+  Parser.prototype.peek = function () { return this.tk[this.pos]; };
+  Parser.prototype.next = function () { return this.tk[this.pos++]; };
+  Parser.prototype.isOp = function (ch) {
+    const k = this.peek();
+    return !!k && k.t === 'op' && k.v === ch;
+  };
+
+  Parser.prototype.expect = function (t) {
+    const k = this.next();
+    if (!k || k.t !== t) throw new Error_('括号不匹配或表达式不完整');
+    return k;
+  };
+
+  /** equation := expr [ '=' expr ] */
+  Parser.prototype.parseEquation = function () {
+    if (!this.tk.length) throw new Error_('请输入一个方程，例如 2x + 3 = 0 或 x² - 5x + 6 = 0');
+    const left = this.parseExpr();
+    let right = [P.ZERO];
+    if (this.peek() && this.peek().t === 'eq') {
+      this.next();
+      right = this.parseExpr();
+    }
+    if (this.pos < this.tk.length) throw new Error_('等号后面还有无法解析的内容，请检查运算符和括号');
+    if (!this.variable) this.variable = 'x';
+    return { left: P.pTrim(left), right: P.pTrim(right), variable: this.variable };
+  };
+
+  /** expr := term ( ('+' | '-') term )* */
+  Parser.prototype.parseExpr = function () {
+    let node = this.parseTerm();
+    for (;;) {
+      if (this.isOp('+') || this.isOp('-')) {
+        const op = this.next().v;
+        const rhs = this.parseTerm();
+        node = op === '+' ? P.pAdd(node, rhs) : P.pSub(node, rhs);
+      } else break;
+    }
+    return node;
+  };
+
+  /** term := unary ( ('*' | '/' | 隐式乘) unary )* */
+  Parser.prototype.parseTerm = function () {
+    let node = this.parseUnary();
+    for (;;) {
+      const k = this.peek();
+      if (!k) break;
+      if (k.t === 'op' && (k.v === '*' || k.v === '/')) {
+        this.next();
+        const rhs = this.parseUnary();
+        node = k.v === '*' ? P.pMul(node, rhs) : P.pDiv(node, rhs);
+      } else if (k.t === 'num' || k.t === 'id' || k.t === 'lp') {
+        // 隐式乘法：2x、3(x+1)、x(x-1)、(x+1)(x-2)
+        node = P.pMul(node, this.parseUnary());
+      } else break;
+    }
+    return node;
+  };
+
+  /** unary := ('+' | '-')* power */
+  Parser.prototype.parseUnary = function () {
+    if (this.isOp('+') || this.isOp('-')) {
+      const op = this.next().v;
+      const v = this.parseUnary();
+      return op === '-' ? P.pNeg(v) : v;
+    }
+    return this.parsePower();
+  };
+
+  /** power := primary [ '^' unary ]，指数必须是 0~20 的整数常数 */
+  Parser.prototype.parsePower = function () {
+    const base = this.parsePrimary();
+    if (this.isOp('^')) {
+      this.next();
+      const exp = P.pToConstantInt(this.parseUnary());
+      return P.pPow(base, exp);
+    }
+    return base;
+  };
+
+  Parser.prototype.parsePrimary = function () {
+    const k = this.next();
+    if (!k) throw new Error_('表达式不完整，请检查是否漏写了数字或符号');
+    if (k.t === 'num') return [k.v];
+    if (k.t === 'id') {
+      if (!this.variable) this.variable = k.v;
+      else if (this.variable.toLowerCase() !== k.v.toLowerCase()) {
+        throw new Error_('目前只支持一个未知数（同时出现了 ' + this.variable + ' 和 ' + k.v + '）');
+      }
+      return [P.ZERO, P.ONE];
+    }
+    if (k.t === 'lp') {
+      const inner = this.parseExpr();
+      this.expect('rp');
+      return inner;
+    }
+    throw new Error_('符号位置不对：' + (k.v || k.t));
+  };
+
+  /** 对外入口：把一段文本解析成 { left, right, variable } */
+  function parseEquationText(text) {
+    const normalized = normalizeInput(text);
+    const parser = new Parser(tokenize(normalized));
+    const r = parser.parseEquation();
+    r.normalized = normalized;
+    return r;
+  }
+
+  NS.parser = { normalizeInput: normalizeInput, tokenize: tokenize, Parser: Parser, parseEquationText: parseEquationText };
+  NS.CIRCLED = CIRCLED;
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+/* ===================== src/30-quadratic.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 模块 4/6：二次方程求解用的数学工具（判别式、根式化简、精确根格式化） */
+(function (NS) {
+  'use strict';
+  const Frac = NS.Frac;
+  const Error_ = NS.EquationError;
+  const U = NS.util;
+  const F = NS.fmt;
+
+  /** 把 √f（f>0，有理数）写成 s·√M / Q 的形式（M 尽量为无平方因子整数） */
+  function sqrtForm(f) {
+    f = new Frac(f);
+    if (f.sign() <= 0) throw new Error_('只有正数才能开平方');
+    const prod = f.n * f.d;            // √(n/d) = √(n·d)/d
+    let n = prod, s = 1n, M = 1n, d = 2n;
+    const LIMIT = 200000n;             // 性能保护：极端大的数不做完全分解
+    while (d * d <= n) {
+      if (n % d === 0n) {
+        let e = 0;
+        while (n % d === 0n) { n /= d; e++; }
+        const half = e >> 1;
+        if (half > 0) s *= d ** BigInt(half);
+        if (e % 2 === 1) M *= d;
+      }
+      if (d > LIMIT) break;
+      d += 1n;
+    }
+    if (n > 1n) M *= n;
+    return { s: s, M: M, Q: f.d };
+  }
+
+  /**
+   * 把 (-b ± s√M/Q) / (2a) 化成 (A ± K√M) / D，A、K、D 为整数且已约简，D > 0。
+   * 二次方程求根公式与复数根用的是同一个式子，所以共用这个函数。
+   */
+  function radicalPair(a, b, s, M, Q) {
+    const q = new Frac(Q);
+    const D0 = a.mul(new Frac(2n)).mul(q);   // 分母 2aQ
+    const N0 = b.neg().mul(q);               // 有理部分 -bQ
+    const L = U.lcmBig(N0.d, D0.d);          // 通分因子：分子分母同乘 L，全部变成整数
+    if (L === 0n) throw new Error_('计算过程出现异常（分母为 0）');
+    let A = N0.n * (L / N0.d);
+    let K = s * L;
+    let D = D0.n * (L / D0.d);
+    let Mv = M;
+    let g = U.gcdBig(U.gcdBig(U.absBig(A), U.absBig(K)), U.absBig(D));
+    if (g > 1n) { A /= g; K /= g; D /= g; }
+    if (D < 0n) { A = -A; K = -K; D = -D; }
+    return { A: A, K: K, M: Mv, D: D };
+  }
+
+  /** A ± K√M 的文字形式（k 带符号） */
+  function numWithRadical(A, k, M) {
+    const kk = k < 0n ? -k : k;
+    const rad = (kk === 1n ? '' : kk.toString()) + '√' + M.toString();
+    if (k === 0n) return A.toString();
+    if (A === 0n) return (k < 0n ? '-' : '') + rad;
+    return A.toString() + (k < 0n ? ' - ' : ' + ') + rad;
+  }
+
+  /** 实根的精确写法：(A ± K√M)/D */
+  function formatRealRadical(p, sign) {
+    const k = sign > 0 ? p.K : -p.K;
+    const inner = numWithRadical(p.A, k, p.M);
+    return p.D === 1n ? inner : '(' + inner + ')/' + p.D;
+  }
+
+  /** 实根的近似值 */
+  function realRadicalNumber(p, sign) {
+    const k = sign > 0 ? p.K : -p.K;
+    const re = Number(p.A) / Number(p.D);
+    const rad = Number(k) * Math.sqrt(Number(p.M)) / Number(p.D);
+    return re + rad;
+  }
+
+  /** 复根的精确写法：实部 ± 虚部 i */
+  function formatComplex(p, sign) {
+    const realFrac = new Frac(p.A, p.D);
+    const realStr = realFrac.d === 1n ? realFrac.n.toString() : '(' + realFrac.n + '/' + realFrac.d + ')';
+    const kk = p.K;
+    let imStr;
+    if (p.M === 1n) {
+      const coef = kk === 1n ? '' : (kk === -1n ? '-' : kk.toString());
+      imStr = p.D === 1n ? coef + 'i' : '(' + kk + '/' + p.D + ')i';
+    } else {
+      const base = (kk === 1n ? '' : kk.toString()) + '√' + p.M.toString();
+      imStr = p.D === 1n ? base + 'i' : '(' + base + '/' + p.D + ')i';
+    }
+    if (realFrac.isZero()) return (sign > 0 ? '' : '-') + imStr;
+    return realStr + (sign > 0 ? ' + ' : ' - ') + imStr;
+  }
+
+  function complexNumber(p, sign) {
+    const re = Number(p.A) / Number(p.D);
+    let im = Number(p.K) * Math.sqrt(Number(p.M)) / Number(p.D);
+    if (sign < 0) im = -im;
+    return { re: re, im: im };
+  }
+
+  NS.quad = {
+    sqrtForm: sqrtForm,
+    radicalPair: radicalPair,
+    formatRealRadical: formatRealRadical,
+    realRadicalNumber: realRadicalNumber,
+    formatComplex: formatComplex,
+    complexNumber: complexNumber,
+    numWithRadical: numWithRadical
+  };
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+/* ===================== src/40-solve-core.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 模块 5/6：求解主逻辑（一次 / 二次）+ 分步讲解 + 代入验算 */
+(function (NS) {
+  'use strict';
+  const Frac = NS.Frac;
+  const Error_ = NS.EquationError;
+  const P = NS.poly;
+  const F = NS.fmt;
+  const Q = NS.quad;
+
+  /** 复数 Horner 求值，返回 |f(x)|，用于代入验算 */
+  function residual(poly, re, im) {
+    let zr = 0, zi = 0;
+    for (let k = poly.length - 1; k >= 0; k--) {
+      const c = poly[k].toNumber();
+      if (!isFinite(c)) return Infinity;
+      const nr = zr * re - zi * im + c;
+      const ni = zr * im + zi * re;
+      zr = nr; zi = ni;
+      if (!isFinite(zr) || !isFinite(zi)) return Infinity;
+    }
+    return Math.hypot(zr, zi);
+  }
+
+  function makeRealRoot(f) {
+    f = new Frac(f);
+    const num = f.toNumber();
+    return { exact: F.fmtFrac(f), display: F.fmtFracBoth(f), approx: num, re: num, im: 0, complex: false };
+  }
+
+  function factorTerm(r, v) {           // (x - r)
+    r = new Frac(r);
+    if (r.isZero()) return v;
+    return r.n < 0n ? '(' + v + ' + ' + F.fmtFrac(r.abs()) + ')' : '(' + v + ' - ' + F.fmtFrac(r) + ')';
+  }
+
+  function factoredForm(a, r1, r2, v) {
+    const coef = a.isOne() ? '' : (a.isNegOne() ? '-' : F.fmtFrac(a));
+    return coef + factorTerm(r1, v) + factorTerm(r2, v) + ' = 0';
+  }
+
+  function squaredForm(a, r, v) {
+    const coef = a.isOne() ? '' : (a.isNegOne() ? '-' : F.fmtFrac(a));
+    return coef + factorTerm(r, v) + '² = 0';
+  }
+
+  /** sqrtForm 结果转文字：s√M/Q（M=1 时就是有理数） */
+  function radicalText(sq) {
+    if (sq.M === 1n) {
+      const f = new Frac(sq.s, sq.Q);
+      return F.fmtFracBoth(f);
+    }
+    const num = (sq.s === 1n ? '' : sq.s.toString()) + '√' + sq.M.toString();
+    return sq.Q === 1n ? num : num + '/' + sq.Q;
+  }
+
+  function radicalValue(sq) {
+    return Number(sq.s) * Math.sqrt(Number(sq.M)) / Number(sq.Q);
+  }
+
+  function verifyStep(res, diff, v, stepper) {
+    if (!res.roots.length) return;
+    const lines = ['把求得的解代回标准形式 ' + res.standard + ' = 0 检验：'];
+    let ok = true;
+    res.roots.forEach(root => {
+      if (!isFinite(root.re) || !isFinite(root.im)) { ok = false; return; }
+      const r = residual(diff, root.re, root.im);
+      if (!isFinite(r)) { ok = false; return; }
+      const shown = r === 0 ? '0' : (r < 1e-9 ? r.toExponential(2) : F.numToStr(r, 8));
+      lines.push(root.expr + '  代入左边得 ' + shown + '，约等于 0，成立 ✓');
+    });
+    if (ok && lines.length > 1) stepper.push('代入验算', lines);
+  }
+
+  function buildSolution(parsed, originalText) {
+    const left = parsed.left, right = parsed.right, v = parsed.variable;
+    const diff = P.pTrim(P.pSub(left, right));      // 移项后的标准形式
+    const deg = diff.length - 1;
+
+    const res = {
+      ok: true, input: String(originalText).trim(), normalized: parsed.normalized, variable: v,
+      left: F.polyToText(left, v), right: F.polyToText(right, v), standard: F.polyToText(diff, v),
+      degree: deg, typeName: '', coefficients: {}, delta: null, steps: [], roots: [],
+      solutionLines: [], solutionText: '', solutionType: '', hasRealRoots: false, plot: null, error: ''
+    };
+    let stepNo = 0;
+    const stepper = {
+      push: function (title, lines) {
+        res.steps.push({
+          title: NS.CIRCLED[stepNo] + ' ' + title,
+          lines: lines.filter(x => x !== undefined && x !== null && x !== '')
+        });
+        stepNo++;
+      }
+    };
+
+    const scan = t => String(t).replace(/\s+/g, '').replace(/²/g, '^2').replace(/³/g, '^3');
+    const firstStep = [String(originalText).trim().replace(/\s+/g, ' ')];
+    if (scan(originalText) !== scan(res.left + '=' + res.right)) {
+      // 只有输入里真的带括号，才说是"展开括号"
+      const label = /[()]/.test(String(originalText)) ? '展开括号、整理两边：' : '化简两边：';
+      firstStep.push(label + res.left + ' = ' + res.right);
+    }
+    stepper.push('原方程', firstStep);
+
+    // 形如 x = c 的输入：未知数已经单独在等号左边、右边是常数，不需要真的"移项"
+    const isolated = deg === 1 && left.length === 2 && left[0].isZero() && left[1].isOne() && right.length === 1;
+
+    if (isolated) {
+      // 第一步"化简两边"之后就已经是 x = c 了，后面不必再移项、再套公式
+      const c0 = right[0];
+      const lines = ['两边化简后，等号左边只剩未知数 ' + v + '，右边是一个常数 ' + F.fmtFrac(c0) + '，',
+        '这已经就是「解」的形式（' + v + ' = ' + F.fmtFracBoth(c0) + '），不需要再移项或两边同除。'];
+      const rawRight = String(originalText).split('=')[1];
+      const rawRightText = rawRight === undefined ? '' : rawRight.trim().replace(/\s+/g, ' ');
+      if (rawRightText && rawRightText.replace(/\s+/g, '') !== String(res.right).replace(/\s+/g, '')) {
+        lines.push('（右边的 ' + rawRightText + ' 的最简形式是 ' + res.right + '）');
+      }
+      lines.push('它等价于一元一次方程 ' + res.standard + ' = 0（a = 1，b = ' + F.fmtFrac(c0.neg()) + '）。');
+      stepper.push('化简后已经得到解', lines);
+    } else if (right.every(f => f.isZero())) {
+      stepper.push('合并同类项', ['右边已经是 0，直接合并左边的同类项。', res.standard + ' = 0']);
+    } else {
+      const rt = right.length > 1 ? '(' + res.right + ')' : res.right;
+      stepper.push('移项并合并同类项', [
+        '把等号右边的每一项都移到左边（左边 - 右边 = 0）：',
+        res.left + ' - ' + rt + ' = 0',
+        '合并同类项，得到标准形式：' + res.standard + ' = 0'
+      ]);
+    }
+
+    if (deg > 2) {
+      throw new Error_('化简后未知数的最高次数是 ' + deg + ' 次，本工具只支持一元一次方程（a' + v + ' + b = 0）和一元二次方程（a' + v + '² + b' + v + ' + c = 0）。');
+    }
+
+    /* ---------- 0 次：恒等式或矛盾 ---------- */
+    if (deg === 0) {
+      const c = diff[0];
+      if (c.isZero()) {
+        res.typeName = '恒等式';
+        stepper.push('判断解的情况', ['整理后得到 0 = 0，无论 ' + v + ' 取什么值这个等式都成立。']);
+        res.solutionLines = ['任意实数', '（方程是恒等式，解集为全体实数）'];
+        res.solutionText = '任意实数（无穷多解）';
+        res.solutionType = 'identity';
+        stepper.push('结论', ['解集：' + res.solutionText]);
+      } else {
+        res.typeName = '矛盾方程';
+        stepper.push('判断解的情况', ['整理后得到 ' + F.fmtFrac(c) + ' = 0，这是一个不可能成立的等式。']);
+        res.solutionLines = ['无解', '（方程矛盾，解集为空集）'];
+        res.solutionText = '无解';
+        res.solutionType = 'none';
+        stepper.push('结论', ['解集：' + res.solutionText]);
+      }
+      res.coefficients = { a: '0', b: F.fmtFrac(c) };
+      res.plot = { kind: 'constant', coeffs: [c.toNumber(), 0, 0], realRoots: [], note: '' };
+      return res;
+    }
+
+    /* ---------- 1 次：一元一次方程 ---------- */
+    if (deg === 1) {
+      const a = diff[1], b = diff[0];
+      res.typeName = '一元一次方程';
+      res.coefficients = { a: F.fmtFrac(a), b: F.fmtFrac(b) };
+      const x = b.neg().div(a);
+      if (isolated) {
+        // 已经解好的方程：不重复"识别类型 / 解方程"，上一步已经说明它就是解
+      } else {
+        stepper.push('识别方程类型', [
+          '未知数 ' + v + ' 的最高次数是 1，所以是一元一次方程，标准形式为 a' + v + ' + b = 0。',
+          '其中 a = ' + F.fmtFrac(a) + '（一次项系数），b = ' + F.fmtFrac(b) + '（常数项），且 a ≠ 0。'
+        ]);
+        const lines = ['移项（常数项移到等号右边）：' + F.coefVar(a, v) + ' = ' + F.fmtFrac(b.neg())];
+        if (!a.isOne()) {
+          lines.push('方程两边同时除以 ' + F.fmtFrac(a) + '：');
+          lines.push(v + ' = ' + F.fmtFrac(b.neg()) + ' ÷ ' + F.fmtFrac(a) + ' = ' + F.fmtFracBoth(x));
+        }
+        stepper.push('解方程', lines);
+      }
+      const root = makeRealRoot(x);
+      root.expr = v + ' = ' + F.fmtFrac(x);
+      res.roots = [root];
+      res.hasRealRoots = true;
+      res.solutionLines = [v + ' = ' + F.fmtFracBoth(x)];
+      res.solutionText = res.solutionLines[0];
+      res.solutionType = 'linear';
+      verifyStep(res, diff, v, stepper);
+      stepper.push('结论', ['方程有唯一解：' + res.solutionText]);
+      res.plot = { kind: 'line', coeffs: [b.toNumber(), a.toNumber(), 0], realRoots: [x.toNumber()], note: '' };
+      return res;
+    }
+
+    /* ---------- 2 次：一元二次方程 ---------- */
+    const a = diff[2], b = diff[1], c = diff[0];
+    const twoA = a.mul(new Frac(2n));
+    const delta = b.mul(b).sub(a.mul(c).mul(new Frac(4n)));
+    res.typeName = '一元二次方程';
+    res.coefficients = { a: F.fmtFrac(a), b: F.fmtFrac(b), c: F.fmtFrac(c) };
+    res.delta = { exact: F.fmtFracBoth(delta), value: delta.toNumber(), sign: delta.sign() };
+
+    const idLines = [
+      '未知数 ' + v + ' 的最高次数是 2，所以是一元二次方程，标准形式为 a' + v + '² + b' + v + ' + c = 0。',
+      'a = ' + F.fmtFrac(a) + '，b = ' + F.fmtFrac(b) + '，c = ' + F.fmtFrac(c) + '（a ≠ 0）'
+    ];
+    if (a.sign() < 0) {
+      idLines.push('提示：两边同乘 -1 可得等价方程 ' + F.polyToText(P.pScale(diff, new Frac(-1n)), v) + ' = 0（把 a 变正数，代入公式时不易出错）。');
+    }
+    stepper.push('识别方程类型', idLines);
+
+    stepper.push('计算判别式 Δ', [
+      'Δ = b² - 4ac = (' + F.fmtFrac(b) + ')² - 4 × (' + F.fmtFrac(a) + ') × (' + F.fmtFrac(c) + ')',
+      'Δ = ' + F.fmtFracBoth(delta),
+      delta.sign() > 0 ? '因为 Δ > 0，方程有两个不相等的实数根。'
+        : delta.isZero() ? '因为 Δ = 0，方程有两个相等的实数根（二重根）。'
+          : '因为 Δ < 0，方程在实数范围内没有解，但在复数范围内有两个共轭虚根。'
+    ]);
+
+    if (delta.isZero()) {
+      const x = b.neg().div(twoA);
+      stepper.push('用求根公式求解', [
+        'Δ = 0 时，两个根相等：' + v + ' = -b / (2a)',
+        v + ' = ' + F.fmtFrac(b.neg()) + ' / ' + F.fmtFrac(twoA) + ' = ' + F.fmtFracBoth(x),
+        '原方程可写成完全平方：' + squaredForm(a, x, v)
+      ]);
+      const root = makeRealRoot(x);
+      root.expr = v + ' = ' + F.fmtFrac(x) + '（二重根）';
+      res.roots = [root];
+      res.hasRealRoots = true;
+      res.solutionLines = [v + ' = ' + F.fmtFracBoth(x) + '（二重根）'];
+      res.solutionText = res.solutionLines[0];
+      res.solutionType = 'double';
+      verifyStep(res, diff, v, stepper);
+      stepper.push('结论', ['方程有两个相等的实数根：' + res.solutionText]);
+      res.plot = { kind: 'parabola', coeffs: [c.toNumber(), b.toNumber(), a.toNumber()], realRoots: [x.toNumber()], note: '' };
+      return res;
+    }
+
+    if (delta.sign() > 0) {
+      const sq = Q.sqrtForm(delta);
+      const pair = Q.radicalPair(a, b, sq.s, sq.M, sq.Q);
+      const sqrtNote = '√Δ = ' + radicalText(sq) + (sq.M === 1n ? '（Δ 是完全平方数，可以直接开出来）' : (sq.s === 1n ? '' : '（把根式化简后的结果）'));
+      if (pair.M === 1n) {
+        const rA = new Frac(pair.A - pair.K, pair.D);
+        const rB = new Frac(pair.A + pair.K, pair.D);
+        const lo = rA.cmp(rB) <= 0 ? rA : rB;
+        const hi = rA.cmp(rB) <= 0 ? rB : rA;
+        const sqrtD = new Frac(sq.s, sq.Q);
+        stepper.push('用求根公式求解', [
+          sqrtNote,
+          v + ' = (-b ± √Δ) / (2a) = (' + F.fmtFrac(b.neg()) + ' ± ' + F.fmtFrac(sqrtD) + ') / ' + F.fmtFrac(twoA),
+          '所以 ' + v + '₁ = ' + F.fmtFracBoth(lo) + '，' + v + '₂ = ' + F.fmtFracBoth(hi),
+          '也可以直接因式分解：' + factoredForm(a, lo, hi, v)
+        ]);
+        const r1 = makeRealRoot(lo), r2 = makeRealRoot(hi);
+        r1.expr = v + '₁ = ' + F.fmtFrac(lo);
+        r2.expr = v + '₂ = ' + F.fmtFrac(hi);
+        res.roots = [r1, r2];
+        res.solutionLines = [v + '₁ = ' + F.fmtFracBoth(lo), v + '₂ = ' + F.fmtFracBoth(hi)];
+      } else {
+        const e1 = Q.formatRealRadical(pair, -1), e2 = Q.formatRealRadical(pair, +1);
+        const n1 = Q.realRadicalNumber(pair, -1), n2 = Q.realRadicalNumber(pair, +1);
+        stepper.push('用求根公式求解', [
+          sqrtNote,
+          v + ' = (-b ± √Δ) / (2a) = (' + F.fmtFrac(b.neg()) + ' ± ' + radicalText(sq) + ') / ' + F.fmtFrac(twoA),
+          '整理后：' + v + '₁ = ' + e1 + ' ≈ ' + F.numToStr(n1, 6) + '，' + v + '₂ = ' + e2 + ' ≈ ' + F.numToStr(n2, 6)
+        ]);
+        const r1 = { exact: e1, display: e1 + ' ≈ ' + F.numToStr(n1, 6), approx: n1, re: n1, im: 0, complex: false, expr: v + '₁ = ' + e1 };
+        const r2 = { exact: e2, display: e2 + ' ≈ ' + F.numToStr(n2, 6), approx: n2, re: n2, im: 0, complex: false, expr: v + '₂ = ' + e2 };
+        res.roots = [r1, r2];
+        res.solutionLines = [v + '₁ = ' + r1.display, v + '₂ = ' + r2.display];
+      }
+      res.hasRealRoots = true;
+      res.solutionType = 'two-roots';
+      res.solutionText = res.solutionLines.join('，');
+      verifyStep(res, diff, v, stepper);
+      stepper.push('结论', ['方程有两个不相等的实数根：' + res.solutionText]);
+      res.plot = {
+        kind: 'parabola',
+        coeffs: [c.toNumber(), b.toNumber(), a.toNumber()],
+        realRoots: res.roots.map(r => r.re),
+        note: ''
+      };
+      return res;
+    }
+
+    /* Δ < 0：复数根 */
+    const sqp = Q.sqrtForm(delta.neg());
+    const pair = Q.radicalPair(a, b, sqp.s, sqp.M, sqp.Q);
+    const e1 = Q.formatComplex(pair, +1), e2 = Q.formatComplex(pair, -1);
+    stepper.push('在复数范围内求解', [
+      'Δ = ' + F.fmtFracBoth(delta) + ' < 0，实数范围内没有解。',
+      '先算 -Δ = ' + F.fmtFracBoth(delta.neg()) + '，其算术平方根 √(-Δ) = ' + radicalText(sqp),
+      '复数范围内用公式：' + v + ' = (-b ± i√(-Δ)) / (2a)，其中 i 是虚数单位（i² = -1）',
+      '得到 ' + v + '₁ = ' + e1 + '，' + v + '₂ = ' + e2
+    ]);
+    const c1 = Q.complexNumber(pair, +1), c2 = Q.complexNumber(pair, -1);
+    res.roots = [
+      { exact: e1, display: e1, approx: null, re: c1.re, im: c1.im, complex: true, expr: v + '₁ = ' + e1 },
+      { exact: e2, display: e2, approx: null, re: c2.re, im: c2.im, complex: true, expr: v + '₂ = ' + e2 }
+    ];
+    res.solutionLines = [v + '₁ = ' + e1, v + '₂ = ' + e2, '（i 为虚数单位，实数范围内无解）'];
+    res.solutionText = v + '₁ = ' + e1 + '，' + v + '₂ = ' + e2;
+    res.solutionType = 'complex';
+    res.hasRealRoots = false;
+    verifyStep(res, diff, v, stepper);
+    stepper.push('结论', ['方程没有实数根；复数范围内解集：' + res.solutionText]);
+    res.plot = { kind: 'parabola', coeffs: [c.toNumber(), b.toNumber(), a.toNumber()], realRoots: [], note: '与 x 轴没有交点（Δ < 0）' };
+    return res;
+  }
+
+  NS.buildSolution = buildSolution;
+  NS.residual = residual;
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+/* ===================== src/90-entry.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 模块 6/6：对外接口 —— solve(方程字符串)、formatReport(纯文本解答) */
+(function (NS) {
+  'use strict';
+  const Error_ = NS.EquationError;
+
+  /**
+   * 求解一个一元一次或一元二次方程。
+   * @param {string} text 例如 "2x+3=5x-9"、"x²-5x+6=0"
+   * @returns {object} 成功：{ ok:true, ... }；失败：{ ok:false, error:'原因' }
+   */
+  function solve(text) {
+    if (text === undefined || text === null || String(text).trim() === '') {
+      return { ok: false, error: '请先输入一个方程，例如 2x + 3 = 0 或 x² - 5x + 6 = 0' };
+    }
+    let parsed;
+    try {
+      parsed = NS.parser.parseEquationText(text);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error_ ? err.message : ('无法解析这个方程：' + (err && err.message ? err.message : err)) };
+    }
+    try {
+      return NS.buildSolution(parsed, text);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error_ ? err.message : ('求解时出错：' + (err && err.message ? err.message : err)) };
+    }
+  }
+
+  /** 把求解结果整理成纯文本（命令行、复制按钮用） */
+  function formatReport(res) {
+    if (!res || !res.ok) return '无法求解：' + ((res && res.error) || '未知错误');
+    const out = [];
+    out.push('原方程：' + res.input);
+    out.push('标准形式：' + res.standard + ' = 0');
+    out.push('方程类型：' + res.typeName);
+    if (res.delta) out.push('判别式：Δ = ' + res.delta.exact);
+    res.steps.forEach(s => {
+      out.push('');
+      out.push('【' + s.title + '】');
+      s.lines.forEach(l => out.push('  ' + l));
+    });
+    out.push('');
+    out.push('解集：' + res.solutionText);
+    return out.join('\n');
+  }
+
+  NS.solve = solve;
+  NS.formatReport = formatReport;
+  NS.version = '1.0.0';
+
+  /* Node 环境：导出（浏览器里用全局 __EqSolver） */
+  if (typeof module === 'object' && module.exports) {
+    module.exports = {
+      solve: solve,
+      formatReport: formatReport,
+      parse: NS.parser.parseEquationText,
+      normalizeInput: NS.parser.normalizeInput,
+      polyToText: NS.fmt.polyToText,
+      Frac: NS.Frac,
+      EquationError: Error_,
+      ns: NS,
+      version: NS.version
+    };
+  }
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+/* ===================== src/ui/app-plot.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 界面模块：把方程画成图（直线或抛物线），标出根与顶点 */
+(function (NS) {
+  'use strict';
+  const UIN = NS.ui = NS.ui || {};
+
+  function niceStep(span, target) {
+    const raw = span / target;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const norm = raw / mag;
+    const mult = norm <= 1 ? 1 : (norm <= 2 ? 2 : (norm <= 5 ? 5 : 10));
+    return mult * mag;
+  }
+
+  function ticks(lo, hi, target) {
+    const step = niceStep(hi - lo, target || 6);
+    const start = Math.ceil(lo / step) * step;
+    const out = [];
+    for (let v = start; v <= hi + step * 1e-6; v += step) out.push(v);
+    return out;
+  }
+
+  function drawPlot(canvas, plot) {
+    if (!canvas || !plot || plot.kind === 'constant' || plot.kind === 'none') return false;
+    const F = NS.fmt;
+    const coeffs = plot.coeffs || [0, 0, 0];
+    const c0 = coeffs[0] || 0, c1 = coeffs[1] || 0, c2 = coeffs[2] || 0;
+    const f = x => c0 + c1 * x + c2 * x * x;
+
+    const roots = (plot.realRoots || []).filter(v => isFinite(v));
+    const vertexX = c2 !== 0 ? -c1 / (2 * c2) : null;
+    const pivot = vertexX !== null ? vertexX : (roots.length ? roots[0] : 0);
+
+    let lo, hi;
+    if (roots.length >= 2) {
+      const a = Math.min.apply(null, roots), b = Math.max.apply(null, roots);
+      const pad = Math.max((b - a) * 0.55, 1.2);
+      lo = a - pad; hi = b + pad;
+    } else if (roots.length === 1) {
+      lo = pivot - 2.6; hi = pivot + 2.6;
+    } else {
+      lo = pivot - 4; hi = pivot + 4;
+    }
+    if (!(isFinite(lo) && isFinite(hi)) || hi - lo < 1e-6) { lo = -5; hi = 5; }
+
+    const N = 400, xs = [], ys = [];
+    for (let i = 0; i <= N; i++) {
+      const x = lo + (hi - lo) * i / N;
+      xs.push(x); ys.push(f(x));
+    }
+    const finite = ys.filter(v => isFinite(v)).slice().sort((a, b) => a - b);
+    let yLo, yHi;
+    if (!finite.length) { yLo = -1; yHi = 1; }
+    else {
+      yLo = finite[Math.floor(finite.length * 0.04)];
+      yHi = finite[Math.floor(finite.length * 0.96)];
+      if (!isFinite(yLo) || !isFinite(yHi) || yHi - yLo < 1e-9) { yLo -= 1; yHi += 1; }
+      const span = yHi - yLo;
+      yLo -= span * 0.18; yHi += span * 0.18;
+      if (yLo > 0.2) yLo = -span * 0.12;            // 保证能看到 x 轴
+      if (yHi < -0.2) yHi = span * 0.12;
+    }
+
+    const w = canvas.clientWidth || 640, h = 260;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const padL = 44, padR = 14, padT = 14, padB = 26;
+    const px = x => padL + (x - lo) / (hi - lo) * (w - padL - padR);
+    const py = y => h - padB - (y - yLo) / (yHi - yLo) * (h - padT - padB);
+
+    /* 网格 */
+    ctx.strokeStyle = 'rgba(255,255,255,.07)';
+    ctx.lineWidth = 1;
+    ctx.font = '11px Consolas, monospace';
+    ctx.fillStyle = '#7b8ba3';
+    ticks(lo, hi, 6).forEach(t => {
+      if (t < lo || t > hi) return;
+      const X = Math.round(px(t)) + .5;
+      ctx.beginPath(); ctx.moveTo(X, padT); ctx.lineTo(X, h - padB); ctx.stroke();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(F.numToStr(t, 4), X, h - padB + 5);
+    });
+    ticks(yLo, yHi, 4).forEach(t => {
+      if (t < yLo || t > yHi) return;
+      const Y = Math.round(py(t)) + .5;
+      ctx.beginPath(); ctx.moveTo(padL, Y); ctx.lineTo(w - padR, Y); ctx.stroke();
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(F.numToStr(t, 4), padL - 6, Y);
+    });
+
+    /* 坐标轴 */
+    ctx.strokeStyle = 'rgba(255,255,255,.38)';
+    ctx.lineWidth = 1.3;
+    if (yLo <= 0 && yHi >= 0) {
+      const Y = Math.round(py(0)) + .5;
+      ctx.beginPath(); ctx.moveTo(padL, Y); ctx.lineTo(w - padR, Y); ctx.stroke();
+    }
+    if (lo <= 0 && hi >= 0) {
+      const X = Math.round(px(0)) + .5;
+      ctx.beginPath(); ctx.moveTo(X, padT); ctx.lineTo(X, h - padB); ctx.stroke();
+    }
+
+    /* 曲线 */
+    ctx.strokeStyle = '#5aa9ff';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i <= N; i++) {
+      const y = ys[i];
+      if (!isFinite(y) || y < yLo - 1e6 || y > yHi + 1e6) { started = false; continue; }
+      const X = px(xs[i]);
+      const Y = Math.max(padT - 40, Math.min(h - padB + 40, py(y)));
+      if (!started) { ctx.moveTo(X, Y); started = true; } else ctx.lineTo(X, Y);
+    }
+    ctx.stroke();
+
+    /* 顶点 */
+    if (vertexX !== null && isFinite(vertexX)) {
+      const vy = f(vertexX);
+      if (isFinite(vy) && vy >= yLo - 1 && vy <= yHi + 1) {
+        ctx.fillStyle = '#c3b2ff';
+        ctx.beginPath(); ctx.arc(px(vertexX), py(vy), 3.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#9d8cf0'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+        ctx.fillText('顶点', px(vertexX) + 6, py(vy) - 4);
+      }
+    }
+
+    /* 根 */
+    ctx.fillStyle = '#35d39a';
+    roots.forEach((r, i) => {
+      const Y = py(0), X = px(r);
+      if (Y < padT - 2 || Y > h - padB + 2) return;
+      ctx.beginPath(); ctx.arc(X, Y, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7ff0c4'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(F.numToStr(r, 4), X, Y - 8);
+      ctx.fillStyle = '#35d39a';
+    });
+
+    /* 图像说明 */
+    ctx.fillStyle = '#93a2b8'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.font = '12px Consolas, monospace';
+    const eq = 'y = ' + (c2 !== 0 ? F.numToStr(c2, 4) + 'x² + ' : '') + (c1 !== 0 ? F.numToStr(c1, 4) + 'x + ' : '') + F.numToStr(c0, 4);
+    ctx.fillText(eq.replace(/\+ -/g, '- '), padL + 4, 6);
+    return true;
+  }
+
+  UIN.drawPlot = drawPlot;
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+/* ===================== src/ui/app-core.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 界面模块：把求解结果渲染成卡片（解集 / 图像 / 步骤） */
+(function (NS) {
+  'use strict';
+  const UIN = NS.ui = NS.ui || {};
+  let lastPlot = null, lastCanvas = null;
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+  /* 折叠区块的展开状态会记住（下次打开还是你上次的选择） */
+  const FOLD_KEY = 'eq-solver-fold-v1';
+
+  function foldStates() {
+    try { return JSON.parse(localStorage.getItem(FOLD_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function foldState(key, def) {
+    const s = foldStates();
+    return Object.prototype.hasOwnProperty.call(s, key) ? !!s[key] : !!def;
+  }
+  function saveFold(key, open) {
+    try {
+      const s = foldStates();
+      s[key] = !!open;
+      localStorage.setItem(FOLD_KEY, JSON.stringify(s));
+    } catch (e) { /* 无 localStorage 时忽略 */ }
+  }
+
+  /** 生成一个折叠区块：details > summary(+meta) > .fold-body */
+  function makeFold(key, title, defaultOpen, metaText) {
+    const details = el('details', 'fold');
+    const summary = el('summary');
+    summary.appendChild(document.createTextNode(title));
+    summary.appendChild(el('span', 'fold-meta', metaText || ''));
+    details.appendChild(summary);
+    const body = el('div', 'fold-body');
+    details.appendChild(body);
+    details.open = foldState(key, defaultOpen);
+    details.addEventListener('toggle', () => {
+      saveFold(key, details.open);
+      if (key === 'plot') setTimeout(() => redrawPlot(), 0);   // 展开后画布才有宽度，需要重画
+    });
+    return { details: details, body: body };
+  }
+
+  const TYPE_LABEL = {
+    linear: '唯一解', 'two-roots': '两个不相等的实数根', double: '两个相等的实数根（二重根）',
+    complex: '复数根（实数范围内无解）', identity: '恒等式 · 无穷多解', none: '无解'
+  };
+
+  function metaChips(res) {
+    const wrap = el('div', 'meta');
+    const add = (k, v) => {
+      const c = el('span', 'meta-chip');
+      c.appendChild(el('b', null, k + '：'));
+      c.appendChild(document.createTextNode(' ' + v));
+      wrap.appendChild(c);
+    };
+    add('类型', res.typeName);
+    add('最高次数', res.degree + ' 次');
+    if (res.coefficients.a !== undefined) add('a', res.coefficients.a);
+    if (res.coefficients.b !== undefined) add('b', res.coefficients.b);
+    if (res.coefficients.c !== undefined) add('c', res.coefficients.c);
+    if (res.delta) add('判别式 Δ', res.delta.exact);
+    add('标准形式', res.standard + ' = 0');
+    return wrap;
+  }
+
+  function solutionCard(res) {
+    const warn = res.solutionType === 'complex' || res.solutionType === 'none';
+    const card = el('section', 'card sol-card' + (warn ? ' warn' : ''));
+    card.appendChild(el('p', 'sol-title', '解集　·　' + (TYPE_LABEL[res.solutionType] || '')));
+    const big = el('div', 'sol-big');
+    res.solutionLines.forEach(l => big.appendChild(el('span', 'ln', l)));
+    card.appendChild(big);
+    if (res.solutionType === 'complex') {
+      card.appendChild(el('p', 'sol-sub', 'i 为虚数单位（i² = -1）；若只在实数范围内讨论，则该方程无解。'));
+    } else if (res.solutionType === 'identity') {
+      card.appendChild(el('p', 'sol-sub', '化简后两边完全相同，任何实数代入都成立。'));
+    } else if (res.solutionType === 'none') {
+      card.appendChild(el('p', 'sol-sub', '化简后得到矛盾的等式，找不到任何实数满足方程。'));
+    }
+    card.appendChild(metaChips(res));
+    return card;
+  }
+
+  function plotCard(res) {
+    if (!res.plot || (res.plot.kind !== 'line' && res.plot.kind !== 'parabola')) return null;
+    const meta = res.plot.kind === 'line'
+      ? '直线与 x 轴的交点就是方程的根'
+      : (res.plot.realRoots && res.plot.realRoots.length ? '抛物线与 x 轴的交点就是方程的根' : '抛物线与 x 轴没有交点');
+    const fold = makeFold('plot', '函数图像', false, meta);
+    const wrap = el('div', 'plot-wrap');
+    const canvas = el('canvas');
+    wrap.appendChild(canvas);
+    fold.body.appendChild(wrap);
+    if (res.plot.note) fold.body.appendChild(el('p', 'plot-note', res.plot.note));
+    lastPlot = res.plot; lastCanvas = canvas;
+    return fold.details;
+  }
+
+  function stepsCard(res) {
+    const fold = makeFold('steps', '解题步骤', false, '共 ' + res.steps.length + ' 步');
+    res.steps.forEach(s => {
+      const box = el('div', 'step');
+      box.appendChild(el('p', 'st', s.title));
+      s.lines.forEach(l => box.appendChild(el('div', 'line', l)));
+      fold.body.appendChild(box);
+    });
+    return fold.details;
+  }
+
+  function errorCard(msg) {
+    const card = el('section', 'card err-card');
+    card.appendChild(el('p', 'big', '暂时算不出来：' + msg));
+    const ul = el('ul');
+    [
+      '一元一次方程的一般形式：ax + b = 0，例如 2x + 3 = 5x - 9',
+      '一元二次方程的一般形式：ax² + bx + c = 0，例如 x² - 5x + 6 = 0',
+      '未知数请用字母表示（一般用 x），同一方程里只能有一个未知数',
+      '未知数不要出现在分母里（本工具求解整式方程）',
+      '次数最高支持 2 次，3 次及以上暂时不支持'
+    ].forEach(t => ul.appendChild(el('li', null, t)));
+    card.appendChild(ul);
+    return card;
+  }
+
+  function render(container, res) {
+    clear(container);
+    if (!res || !res.ok) {
+      container.appendChild(errorCard((res && res.error) || '未知错误'));
+      lastPlot = null; lastCanvas = null;
+      return;
+    }
+    container.appendChild(solutionCard(res));
+    const pc = plotCard(res);
+    if (pc) {
+      container.appendChild(pc);
+      NS.ui.drawPlot(lastCanvas, lastPlot);
+    }
+    container.appendChild(stepsCard(res));
+  }
+
+  function redrawPlot() {
+    if (lastCanvas && lastPlot && document.body.contains(lastCanvas)) {
+      NS.ui.drawPlot(lastCanvas, lastPlot);
+    }
+  }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => t.classList.remove('show'), 1700);
+  }
+
+  NS.ui.render = render;
+  NS.ui.redrawPlot = redrawPlot;
+  NS.ui.toast = toast;
+  NS.ui.clear = clear;
+  NS.ui.el = el;
+  NS.ui.makeFold = makeFold;
+  NS.ui.foldState = foldState;
+  NS.ui.saveFold = saveFold;
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+/* ===================== src/ui/app-boot.js ===================== */
+// SPDX-License-Identifier: MIT
+/* 界面模块：事件绑定、历史记录、复制、折叠状态 */
+(function (NS) {
+  'use strict';
+  const UIN = NS.ui;
+  const STORE_KEY = 'eq-solver-history-v1';
+  let lastRes = null;
+
+  function loadHistory() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.slice(0, 12) : [];
+    } catch (e) { return []; }
+  }
+  function saveHistory(arr) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(arr.slice(0, 12))); } catch (e) { /* 忽略 */ }
+  }
+
+  function boot() {
+    const input = document.getElementById('eq');
+    const solveBtn = document.getElementById('solveBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const resultEl = document.getElementById('result');
+    const historyCard = document.getElementById('historyCard');
+    const historyEl = document.getElementById('history');
+    const historyMeta = document.getElementById('historyMeta');
+    if (!input || !resultEl) return;
+
+    let history = loadHistory();
+
+    function renderHistory() {
+      if (!historyEl) return;
+      UIN.clear(historyEl);
+      if (historyCard) historyCard.hidden = history.length === 0;
+      if (historyMeta) historyMeta.textContent = history.length ? '共 ' + history.length + ' 条' : '';
+      history.forEach(q => {
+        const chip = UIN.el('button', 'chip', q);
+        chip.type = 'button';
+        chip.addEventListener('click', () => { input.value = q; doSolve(); });
+        historyEl.appendChild(chip);
+      });
+    }
+
+    function pushHistory(q) {
+      const key = q.replace(/\s+/g, '');
+      history = [q].concat(history.filter(x => x.replace(/\s+/g, '') !== key)).slice(0, 12);
+      saveHistory(history);
+      renderHistory();
+    }
+
+    function doSolve() {
+      const text = input.value;
+      const res = NS.solve(text);
+      lastRes = res;
+      UIN.render(resultEl, res);
+      if (res.ok) pushHistory(text.trim().replace(/\s+/g, ' '));
+      if (window.innerWidth < 760) {
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    solveBtn.addEventListener('click', doSolve);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); doSolve(); }
+    });
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        if (!lastRes) { UIN.toast('请先求解一个方程'); return; }
+        const text = NS.formatReport(lastRes);
+        const ok = () => UIN.toast('解答已复制到剪贴板');
+        const fail = () => UIN.toast('复制失败，请手动选择文本');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(ok, () => fallbackCopy(text) ? ok() : fail());
+        } else {
+          fallbackCopy(text) ? ok() : fail();
+        }
+      });
+    }
+
+    /* 历史记录也是折叠区块：记住展开状态 */
+    if (historyCard) {
+      historyCard.open = UIN.foldState('history', false);
+      historyCard.addEventListener('toggle', () => UIN.saveFold('history', historyCard.open));
+    }
+
+    let rt = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(rt);
+      rt = setTimeout(() => UIN.redrawPlot(), 120);
+    });
+
+    renderHistory();
+    input.focus();
+  }
+
+  function fallbackCopy(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);
+</script>
+</body>
+</html>
