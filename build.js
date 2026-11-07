@@ -9,12 +9,13 @@ const vm = require('vm');
 
 const root = __dirname;
 const FILES = [
-  'src/00-frac.js', 'src/10-poly.js', 'src/20-parser.js', 'src/30-quadratic.js',
-  'src/40-solve-core.js', 'src/90-entry.js',
+  'src/00-frac.js', 'src/05-complex.js', 'src/10-poly.js', 'src/15-expr.js',
+  'src/20-parser.js', 'src/30-quadratic.js', 'src/40-solve-core.js',
+  'src/45-polyroots.js', 'src/50-plot-model.js', 'src/90-entry.js',
   'src/ui/app-plot.js', 'src/ui/app-core.js', 'src/ui/app-boot.js'
 ];
 
-const banner = '<!--\n  解方程计算器（一元一次 / 一元二次）—— 单文件离线版\n' +
+const banner = '<!--\n  数学计算器（方程 · 算式 · 绘图）—— 单文件离线版\n' +
   '  由 build.js 自动生成，请勿直接修改本文件；改源码后重新运行 node build.js\n' +
   '-->';
 
@@ -34,7 +35,7 @@ const built = tpl.replace(
 );
 
 if (/<script src=/.test(built)) throw new Error('打包失败：仍有外部脚本引用');
-if (!/解方程计算器/.test(built)) throw new Error('打包失败：模板内容异常');
+if (!/数学计算器/.test(built)) throw new Error('打包失败：模板内容异常');
 
 const out = path.join(root, 'index.html');
 fs.writeFileSync(out, built.replace('<!DOCTYPE html>', '<!DOCTYPE html>\n' + banner), 'utf8');

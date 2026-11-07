@@ -1,11 +1,50 @@
 // SPDX-License-Identifier: MIT
-/* 模块 2/6：多项式运算与显示格式化 */
+/* 模块 3/10：多项式运算与显示格式化 */
 (function (NS) {
   'use strict';
   const Frac = NS.Frac;
   const Error_ = NS.EquationError;
   const ZERO = new Frac(0n);
   const ONE = new Frac(1n);
+
+  /** 复数的显示：实部/虚部都在容差内归零，虚部为 ±1 时写成 ±i */
+  function fmtComplex(z, digits) {
+    const d = digits || 12;
+    let re = Number(z && z.re), im = Number(z && z.im === undefined ? 0 : z.im);
+    if (!isFinite(re) || !isFinite(im)) return '无定义';
+    const tol = 1e-12 * Math.max(Math.abs(re), Math.abs(im), 1);
+    if (Math.abs(re) < tol) re = 0;
+    if (Math.abs(im) < tol) im = 0;
+    if (im === 0) return numToStr(re, d);
+    const imText = numToStr(Math.abs(im), d);
+    const imStr = (imText === '1' ? '' : imText) + 'i';
+    if (re === 0) return (im < 0 ? '-' : '') + imStr;
+    return numToStr(re, d) + (im < 0 ? ' - ' : ' + ') + imStr;
+  }
+
+  /** 把小数还原成一个「好看」的分数（连分数展开，容差 1e-12）；不像分数就返回 null */
+  function bestFrac(x, maxDen) {
+    x = Number(x);
+    maxDen = maxDen || 100000;
+    if (!isFinite(x) || Number.isInteger(x)) return null;
+    const limit = BigInt(maxDen);
+    const sign = x < 0 ? -1n : 1n;
+    const v = Math.abs(x);
+    let h0 = 0n, h1 = 1n, k0 = 1n, k1 = 0n, rest = v;
+    for (let i = 0; i < 40; i++) {
+      if (!isFinite(rest) || rest > 1e15) break;
+      const a = Math.floor(rest);
+      const h2 = BigInt(a) * h1 + h0, k2 = BigInt(a) * k1 + k0;
+      if (k2 > limit) break;
+      h0 = h1; h1 = h2; k0 = k1; k1 = k2;
+      const frac = Number(h1) / Number(k1);
+      if (Math.abs(frac - v) <= 1e-12 * Math.max(1, v)) return new Frac(sign * h1, k1);
+      const rem = rest - a;
+      if (rem < 1e-15) break;
+      rest = 1 / rem;
+    }
+    return null;
+  }
 
   /* 多项式用「系数数组」表示：p[k] 是 x^k 的系数（Frac），下标即次数 */
   function pTrim(p) {
@@ -172,6 +211,7 @@
   };
   NS.fmt = {
     fmtFrac: fmtFrac, fmtFracBoth: fmtFracBoth, fmtCoef: fmtCoef, coefVar: coefVar,
-    polyToText: polyToText, numToStr: numToStr, exactDecimal: exactDecimal
+    polyToText: polyToText, numToStr: numToStr, exactDecimal: exactDecimal,
+    fmtComplex: fmtComplex, bestFrac: bestFrac
   };
 })(typeof globalThis !== 'undefined' ? (globalThis.__EqSolver = globalThis.__EqSolver || {}) : this);

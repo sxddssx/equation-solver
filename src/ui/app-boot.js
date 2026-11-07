@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-/* 界面模块：事件绑定、历史记录、复制、折叠状态 */
+/* 界面模块：事件绑定、历史记录、复制、角度制切换、折叠状态 */
 (function (NS) {
   'use strict';
   const UIN = NS.ui;
   const STORE_KEY = 'eq-solver-history-v1';
+  const ANGLE_KEY = 'eq-solver-angle-v1';
   let lastRes = null;
 
   function loadHistory() {
@@ -21,11 +22,26 @@
     const input = document.getElementById('eq');
     const solveBtn = document.getElementById('solveBtn');
     const copyBtn = document.getElementById('copyBtn');
+    const angleBtn = document.getElementById('angleBtn');
     const resultEl = document.getElementById('result');
     const historyCard = document.getElementById('historyCard');
     const historyEl = document.getElementById('history');
     const historyMeta = document.getElementById('historyMeta');
     if (!input || !resultEl) return;
+
+    /* ---- 角度制 / 弧度制（记住上次的选择） ---- */
+    try {
+      const saved = localStorage.getItem(ANGLE_KEY);
+      if (saved === 'rad' || saved === 'deg') NS.setAngleMode(saved);
+    } catch (e) { /* 忽略 */ }
+
+    function paintAngle() {
+      if (!angleBtn) return;
+      const deg = NS.settings.useDegree;
+      angleBtn.textContent = deg ? '角度制 DEG' : '弧度制 RAD';
+      if (angleBtn.setAttribute) angleBtn.setAttribute('data-mode', deg ? 'deg' : 'rad');
+      angleBtn.title = deg ? '三角函数当前按角度计算（点击切换为弧度制）' : '三角函数当前按弧度计算（点击切换为角度制）';
+    }
 
     let history = loadHistory();
 
@@ -51,7 +67,7 @@
 
     function doSolve() {
       const text = input.value;
-      const res = NS.solve(text);
+      const res = NS.compute(text);
       lastRes = res;
       UIN.render(resultEl, res);
       if (res.ok) pushHistory(text.trim().replace(/\s+/g, ' '));
@@ -65,9 +81,20 @@
       if (e.key === 'Enter') { e.preventDefault(); doSolve(); }
     });
 
+    if (angleBtn) {
+      angleBtn.addEventListener('click', () => {
+        const deg = !NS.settings.useDegree;
+        NS.setAngleMode(deg ? 'deg' : 'rad');
+        try { localStorage.setItem(ANGLE_KEY, deg ? 'deg' : 'rad'); } catch (e) { /* 忽略 */ }
+        paintAngle();
+        UIN.toast(deg ? '三角函数改用角度制（sin(30) = 0.5）' : '三角函数改用弧度制（sin(pi/2) = 1）');
+        if (input.value.trim()) doSolve();
+      });
+    }
+
     if (copyBtn) {
       copyBtn.addEventListener('click', () => {
-        if (!lastRes) { UIN.toast('请先求解一个方程'); return; }
+        if (!lastRes) { UIN.toast('请先计算一个结果'); return; }
         const text = NS.formatReport(lastRes);
         const ok = () => UIN.toast('解答已复制到剪贴板');
         const fail = () => UIN.toast('复制失败，请手动选择文本');
@@ -91,6 +118,7 @@
       rt = setTimeout(() => UIN.redrawPlot(), 120);
     });
 
+    paintAngle();
     renderHistory();
     input.focus();
   }

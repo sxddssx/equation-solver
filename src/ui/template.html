@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>解方程计算器 · 一元一次 / 一元二次</title>
+<title>数学计算器 · 方程 / 算式 / 绘图</title>
 <style>
 :root{
   --bg:#0d1117; --bg2:#141a24; --card:rgba(22,29,41,.82); --line:rgba(255,255,255,.09);
@@ -49,11 +49,18 @@ body{
 .btn:hover{transform:translateY(-1px);background:#243044}
 .btn.primary{background:linear-gradient(96deg,var(--acc),var(--acc2));border-color:transparent}
 .btn.primary:hover{box-shadow:0 8px 22px rgba(79,157,255,.32)}
+.btn.small{padding:8px 14px;font-size:13.5px;border-radius:10px}
+.btn.ghost{background:rgba(255,255,255,.04)}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.toolbar .tag{font-size:12.5px;color:var(--dim)}
+#angleBtn{min-width:112px;font-family:"Cascadia Mono",Consolas,monospace}
+#angleBtn[data-mode="rad"]{border-color:rgba(79,157,255,.55);color:#bcd9ff}
 .hint{margin:10px 2px 0;color:var(--dim);font-size:13px}
 .hint code,.mono{font-family:"Cascadia Mono",Consolas,monospace;color:#bcd4f0;background:rgba(255,255,255,.06);padding:1px 6px;border-radius:6px}
 kbd{font-family:inherit;font-size:12px;background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
 .sol-card{border-color:rgba(53,211,154,.32);background:linear-gradient(180deg,rgba(53,211,154,.10),rgba(22,29,41,.85))}
 .sol-card.warn{border-color:rgba(255,176,32,.34);background:linear-gradient(180deg,rgba(255,176,32,.10),rgba(22,29,41,.85))}
+.calc-card{border-color:rgba(79,157,255,.34);background:linear-gradient(180deg,rgba(79,157,255,.10),rgba(22,29,41,.85))}
 .sol-title{font-size:13px;color:var(--dim);letter-spacing:1px;margin:0 0 8px}
 .sol-big{font-size:clamp(20px,3.4vw,27px);font-weight:600;line-height:1.5;word-break:break-word;font-family:"Cascadia Mono",Consolas,monospace}
 .sol-big .ln{display:block}
@@ -70,6 +77,12 @@ kbd{font-family:inherit;font-size:12px;background:rgba(255,255,255,.1);border:1p
 .plot-wrap{position:relative}
 canvas{width:100%;height:260px;display:block;border-radius:12px;background:#0b1220;border:1px solid var(--line)}
 .plot-note{color:var(--dim);font-size:13px;margin:8px 2px 0}
+.range-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--dim)}
+.num-input{
+  width:96px;padding:7px 9px;color:var(--txt);background:#0b1220;border:1px solid rgba(255,255,255,.14);
+  border-radius:9px;font-family:"Cascadia Mono",Consolas,monospace;font-size:13.5px;outline:none;
+}
+.num-input:focus{border-color:var(--acc)}
 /* 折叠区块（函数图像 / 解题步骤 / 历史记录） */
 .fold{
   background:var(--card); border:1px solid var(--line); border-radius:16px; margin-bottom:16px;
@@ -114,20 +127,27 @@ canvas{width:100%;height:260px;display:block;border-radius:12px;background:#0b12
 <body>
 <div class="app">
   <header class="hero">
-    <h1>解方程计算器</h1>
-    <p class="sub">一元一次方程 · 一元二次方程 &nbsp;|&nbsp; 自动移项、合并同类项、判别式、分步讲解、代入验算</p>
+    <h1>数学计算器</h1>
+    <p class="sub">方程求解（一次 / 二次 / 高次）&nbsp;·&nbsp; 复数与函数算式 &nbsp;·&nbsp; 函数图像 &nbsp;|&nbsp; 精确有理数 + 根式化简 + 分步讲解</p>
   </header>
 
   <section class="card">
-    <label class="lbl" for="eq">输入方程（等号两边都可以有未知数）</label>
+    <label class="lbl" for="eq">输入方程、算式或绘图命令</label>
     <div class="input-row">
-      <input id="eq" type="text" autocomplete="off" spellcheck="false" placeholder="例如：2x + 3 = 5x - 9   或   x² - 5x + 6 = 0">
-      <button id="solveBtn" class="btn primary" type="button">求解</button>
+      <input id="eq" type="text" autocomplete="off" spellcheck="false"
+             placeholder="2x + 3 = 5x - 9　|　x^3 = 8　|　sin(30) + 1/2　|　plot x^2 - 4">
+      <button id="solveBtn" class="btn primary" type="button">计算</button>
       <button id="copyBtn" class="btn" type="button">复制解答</button>
     </div>
+    <div class="toolbar">
+      <span class="tag">三角函数单位</span>
+      <button id="angleBtn" class="btn small ghost" type="button" data-mode="deg">角度制 DEG</button>
+      <span class="tag">含 <code>x</code> 按方程处理，纯数值按算式处理，<code>plot</code> 开头画图像</span>
+    </div>
     <p class="hint">
-      支持：<code>x^2</code> 或 <code>x²</code>、括号、小数、分数 <code>1/2</code>、<code>2x</code> 这类省略乘号写法；
-      按 <kbd>Enter</kbd> 直接求解。求解全部用精确有理数与根式完成。
+      方程：<code>2x+3=5x-9</code>、<code>x²-5x+6=0</code>、<code>x^3-8=0</code>；
+      算式：<code>2^10</code>、<code>5!</code>、<code>(3+4i)/(1-2i)</code>、<code>log(2,8)</code>、<code>nCr(5,2)</code>；
+      绘图：<code>plot sin(x)</code>、<code>plot 1/x</code>。按 <kbd>Enter</kbd> 直接计算，结果用精确有理数与根式表示。
     </p>
   </section>
 
@@ -140,16 +160,20 @@ canvas{width:100%;height:260px;display:block;border-radius:12px;background:#0b12
     </div>
   </details>
 
-  <footer class="foot">一元一次 / 一元二次方程自动求解器 · 结果含精确解与小数近似，可复制粘贴</footer>
+  <footer class="foot">方程 / 算式 / 绘图三合一计算器 · 结果含精确解与数值近似，可复制粘贴</footer>
 </div>
 <div class="toast" id="toast"></div>
 
 <!-- DEV-SCRIPTS-START -->
 <script src="src/00-frac.js"></script>
+<script src="src/05-complex.js"></script>
 <script src="src/10-poly.js"></script>
+<script src="src/15-expr.js"></script>
 <script src="src/20-parser.js"></script>
 <script src="src/30-quadratic.js"></script>
 <script src="src/40-solve-core.js"></script>
+<script src="src/45-polyroots.js"></script>
+<script src="src/50-plot-model.js"></script>
 <script src="src/90-entry.js"></script>
 <script src="src/ui/app-plot.js"></script>
 <script src="src/ui/app-core.js"></script>

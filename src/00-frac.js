@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/* 一元一次/一元二次方程求解器 —— 模块 1/6：有理数与工具
+/* 模块 1/10：有理数与工具（BigInt 精确分数）
  * 纯逻辑，无 DOM 依赖。所有模块挂在全局命名空间 __EqSolver 上，
  * 既能被浏览器（多个 <script> 或打包成一个文件）使用，也能被 Node require。
  */

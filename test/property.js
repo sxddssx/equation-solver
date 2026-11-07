@@ -1,6 +1,7 @@
 /* 随机方程属性测试：随机生成一元一次 / 一元二次方程，检查
  *   1) 一定能求解；2) 解的类型与判别式符号一致；
  *   3) 每个根代回后精确为 0（有理根）或数值上约等于 0（无理根 / 复数根）。
+ * 另外还会随机生成三次~五次的「整数根」方程，检查高次求解器把根全找了出来。
  * 用法：node test/property.js [数量]
  */
 'use strict';
@@ -115,6 +116,57 @@ for (let i = 0; i < N; i++) {
 
 console.log('随机方程数量：' + N);
 console.log('解的类型分布：' + JSON.stringify(typeCount));
+
+/* ---------------- 高次方程：整数根一定能被精确找出来 ---------------- */
+function mulPoly(a, b) {
+  const out = new Array(a.length + b.length - 1).fill(0);
+  for (let i = 0; i < a.length; i++) {
+    for (let j = 0; j < b.length; j++) out[i + j] += a[i] * b[j];
+  }
+  return out;
+}
+
+const NH = Math.max(50, Math.floor(N / 4));
+let highOk = 0;
+for (let i = 0; i < NH; i++) {
+  const v = rnd() < 0.5 ? 'x' : 'X';
+  const deg = 3 + Math.floor(rnd() * 3);            // 3~5 次
+  const roots = [];
+  for (let k = 0; k < deg; k++) roots.push(ri(-4, 4));
+  let coefs = [1];
+  roots.forEach(r => { coefs = mulPoly(coefs, [-r, 1]); });
+  const lead = 1 + Math.floor(rnd() * 3);
+  coefs = coefs.map(c => c * lead);
+
+  const q = buildEquation(coefs, v);
+  const res = S.solve(q);
+  const want = Array.from(new Set(roots)).sort((a, b) => a - b);
+  const mark = msg => fails.push({ q: q, msg: msg, text: res.ok ? res.solutionText : res.error });
+
+  if (!res.ok) { mark('高次方程求解失败'); continue; }
+  if (res.solutionType !== 'high-degree') { mark('高次方程的类型不对：' + res.solutionType); continue; }
+  if (res.roots.length !== want.length) {
+    mark('根的个数不符：期望 ' + want.length + ' 个不同的根，实际 ' + res.roots.length + ' 个');
+    continue;
+  }
+  let bad = null;
+  want.forEach(r => {
+    if (bad) return;
+    const hit = res.roots.some(x => Math.abs(x.re - r) < 1e-9 && Math.abs(x.im) < 1e-9);
+    if (!hit) bad = '缺少根 ' + r;
+  });
+  if (bad) { mark(bad); continue; }
+  res.roots.forEach((x, k) => {
+    if (bad) return;
+    const num = horner(coefs, x.re, x.im);
+    if (!(num < 1e-6 * Math.max(1, Math.abs(x.re)))) bad = '第 ' + (k + 1) + ' 个根代回不成立：' + num;
+  });
+  if (bad) { mark(bad); continue; }
+  highOk++;
+  typeCount['high-degree'] = (typeCount['high-degree'] || 0) + 1;
+}
+console.log('随机高次方程数量：' + NH + '，通过的：' + highOk);
+
 if (fails.length) {
   console.log('失败 ' + fails.length + ' 例，前 8 例：');
   fails.slice(0, 8).forEach(f => console.log('  ✗ ' + JSON.stringify(f.q) + ' → ' + f.msg + '（' + f.text + '）'));

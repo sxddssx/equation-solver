@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/* 模块 5/6：求解主逻辑（一次 / 二次）+ 分步讲解 + 代入验算 */
+/* 模块 7/10：求解主逻辑（一次 / 二次 / 高次入口）+ 分步讲解 + 代入验算 */
 (function (NS) {
   'use strict';
   const Frac = NS.Frac;
@@ -130,7 +130,20 @@
     }
 
     if (deg > 2) {
-      throw new Error_('化简后未知数的最高次数是 ' + deg + ' 次，本工具只支持一元一次方程（a' + v + ' + b = 0）和一元二次方程（a' + v + '² + b' + v + ' + c = 0）。');
+      /* 三次及以上：有理根 + 降次，必要时数值求根（见 45-polyroots.js） */
+      const hd = NS.polyroots.solve(diff, v, stepper);
+      res.typeName = hd.typeName;
+      res.solutionType = hd.solutionType;
+      res.roots = hd.roots;
+      res.solutionLines = hd.solutionLines;
+      res.solutionText = hd.solutionText;
+      res.hasRealRoots = hd.hasRealRoots;
+      res.coefficients = hd.coefficients;
+      res.delta = hd.delta;
+      res.plot = hd.plot;
+      verifyStep(res, diff, v, stepper);
+      stepper.push('结论', [hd.conclusion]);
+      return res;
     }
 
     /* ---------- 0 次：恒等式或矛盾 ---------- */
@@ -152,7 +165,7 @@
         stepper.push('结论', ['解集：' + res.solutionText]);
       }
       res.coefficients = { a: '0', b: F.fmtFrac(c) };
-      res.plot = { kind: 'constant', coeffs: [c.toNumber(), 0, 0], realRoots: [], note: '' };
+      res.plot = { kind: 'constant', expr: res.standard, coeffs: [c.toNumber(), 0, 0], realRoots: [], note: '' };
       return res;
     }
 
@@ -185,7 +198,7 @@
       res.solutionType = 'linear';
       verifyStep(res, diff, v, stepper);
       stepper.push('结论', ['方程有唯一解：' + res.solutionText]);
-      res.plot = { kind: 'line', coeffs: [b.toNumber(), a.toNumber(), 0], realRoots: [x.toNumber()], note: '' };
+      res.plot = { kind: 'line', expr: res.standard, coeffs: [b.toNumber(), a.toNumber(), 0], realRoots: [x.toNumber()], note: '' };
       return res;
     }
 
@@ -230,7 +243,7 @@
       res.solutionType = 'double';
       verifyStep(res, diff, v, stepper);
       stepper.push('结论', ['方程有两个相等的实数根：' + res.solutionText]);
-      res.plot = { kind: 'parabola', coeffs: [c.toNumber(), b.toNumber(), a.toNumber()], realRoots: [x.toNumber()], note: '' };
+      res.plot = { kind: 'parabola', expr: res.standard, coeffs: [c.toNumber(), b.toNumber(), a.toNumber()], realRoots: [x.toNumber()], note: '' };
       return res;
     }
 
@@ -275,6 +288,7 @@
       stepper.push('结论', ['方程有两个不相等的实数根：' + res.solutionText]);
       res.plot = {
         kind: 'parabola',
+        expr: res.standard,
         coeffs: [c.toNumber(), b.toNumber(), a.toNumber()],
         realRoots: res.roots.map(r => r.re),
         note: ''
@@ -303,7 +317,7 @@
     res.hasRealRoots = false;
     verifyStep(res, diff, v, stepper);
     stepper.push('结论', ['方程没有实数根；复数范围内解集：' + res.solutionText]);
-    res.plot = { kind: 'parabola', coeffs: [c.toNumber(), b.toNumber(), a.toNumber()], realRoots: [], note: '与 x 轴没有交点（Δ < 0）' };
+    res.plot = { kind: 'parabola', expr: res.standard, coeffs: [c.toNumber(), b.toNumber(), a.toNumber()], realRoots: [], note: '与 x 轴没有交点（Δ < 0）' };
     return res;
   }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/* 模块 4/6：二次方程求解用的数学工具（判别式、根式化简、精确根格式化） */
+/* 模块 6/10：二次方程求解用的数学工具（判别式、根式化简、精确根格式化） */
 (function (NS) {
   'use strict';
   const Frac = NS.Frac;
